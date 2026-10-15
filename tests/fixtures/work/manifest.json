@@ -1,0 +1,450 @@
+{
+  "dataset": "TEST_REMIO_3214",
+  "synthetic": true,
+  "product_execution": "NOT_RUN",
+  "files": [
+    {
+      "path": "importable/audio/silence-3s.wav",
+      "bytes": 96044,
+      "sha256": "d303811b8c84619667cd0501342f84ec6cbe69f7aa3856dcf52fabda374c92b8",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行",
+      "channels": 1,
+      "sample_rate": 16000,
+      "duration_seconds": 3.0
+    },
+    {
+      "path": "importable/audio/speech-en.aiff",
+      "bytes": 694048,
+      "sha256": "f4aa74c2c1af9bec9dfc1a9152a57ec7d6ff4ba0d52241614eee02cc0b26cfd6",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/audio/speech-en.wav",
+      "bytes": 504742,
+      "sha256": "cb6b0dcfc2219c81cd02d6acd3590b8b7a7a6f6dd207f1cd57c922dc4a51c569",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行",
+      "channels": 1,
+      "sample_rate": 16000,
+      "duration_seconds": 15.6451875
+    },
+    {
+      "path": "importable/audio/tone-5s.wav",
+      "bytes": 160044,
+      "sha256": "f09a4d5ca5c58215620ffcfcc69b55c687a66dd76668d3118fef710d018ee40d",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行",
+      "channels": 1,
+      "sample_rate": 16000,
+      "duration_seconds": 5.0
+    },
+    {
+      "path": "importable/boundaries/empty.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/boundaries/long-line.txt",
+      "bytes": 47531,
+      "sha256": "e7da63db60fc8de52cf00b5dc8c4173da9ab6f4b065f77e104a8307c8580a82b",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/boundaries/utf16.txt",
+      "bytes": 38,
+      "sha256": "fc732023a47300165632ebe4553437092e574860001134d44eae5783cf04d19e",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/boundaries/whitespace.txt",
+      "bytes": 4,
+      "sha256": "f293d56ef36735071ffed42a91fa8fb7f5d3124d7550202e3f40712db76eb5d2",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/boundaries/长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名长文件名.md",
+      "bytes": 79,
+      "sha256": "91fa0e8e0ff9fe0e03c0a369ef5d85d494508995ddf824c4c33afd607227f193",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/conflicts/base.md",
+      "bytes": 56,
+      "sha256": "c36ea9bc3c19cdf934677deecd67ca80334d254874039dd346b0db6f814ba887",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/conflicts/device-A.md",
+      "bytes": 57,
+      "sha256": "ec22b13cce08522647e5b51d23bb0b6e7ad04ab1ddf40ed6bcdf491ea020e631",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/conflicts/device-B.md",
+      "bytes": 57,
+      "sha256": "caa417a47486f46a07733e268e51398c0fae6f8ea85b58eab37fdba214d6f10d",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/duplicates/A/同名.md",
+      "bytes": 51,
+      "sha256": "3317e34523ec218361111ee5e701fc55d33b216a92255d46d646c500604fec27",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/duplicates/B/同名.md",
+      "bytes": 50,
+      "sha256": "ab8bbc90d143606daa2a29af599984820883089adcb426be679d318c3a70b1d9",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/editing/roundtrip.md",
+      "bytes": 221,
+      "sha256": "dad07699b7d99f1932dfc9459707b1ac225ffc590b7e368c4ca2f8303c56e89f",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/images/blank.png",
+      "bytes": 1948,
+      "sha256": "97a276960a5aeae3a46a7220a759ac79563b2a2949bd38139ad25792343f7c38",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/images/ocr-clean.jpg",
+      "bytes": 51914,
+      "sha256": "c59ef5911332d392d1a132fc62d7f55c453af3606dd2a5fe033fe256504f1691",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/images/ocr-clean.png",
+      "bytes": 35777,
+      "sha256": "3e4b7033c06bf4d5f89ec269f96d462c50e2d43ebb0709c0c6a7cf1b2019daf5",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/images/ocr-rotated.png",
+      "bytes": 44161,
+      "sha256": "3fb26ad8373b2c7156c2f896460aea8a9c10025a6959404f80dc43180bff3286",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/imports/single-note.enex",
+      "bytes": 527,
+      "sha256": "2589abe0c258d189dae255303db40b533b5b79ce0e90686270420568ba86fcd1",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/invalid/broken.pdf",
+      "bytes": 36,
+      "sha256": "ba25e0ff55c9a1dc9f38931fbc72372bd060626b41907a863069fef05e6ea3a4",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/invalid/broken.png",
+      "bytes": 21,
+      "sha256": "30378b31f44f6eda977451e1ede949dcea227b6f7e9f425e64903f551232602a",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/invalid/broken.wav",
+      "bytes": 23,
+      "sha256": "cfac52d8b00b5dc78f3f0cb2bc3979934f165a5b59c736298abbbfa1e8614c42",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/notes/01_星河项目.md",
+      "bytes": 450,
+      "sha256": "fdb0d6ee5684e7044aa31883c8ee15b9b38e4268bbd8b35903da379c18f7efa9",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/notes/02_会议纪要.md",
+      "bytes": 315,
+      "sha256": "411129f3eadc93f1b584ace191d8a245cb3a6b183b8b5cc8934f97b871e2114d",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/notes/03_预算修订.md",
+      "bytes": 173,
+      "sha256": "51f7aad1dda8538eabfffadf2cc26fc86185fad17cfaa0c5d0133f825985a920",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/notes/04_English.md",
+      "bytes": 200,
+      "sha256": "a0369ebf06576c0e6669a798bb4bcf0c30cc996e4f2e66be6502e22f6ef8014d",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/notes/05_多语言.txt",
+      "bytes": 196,
+      "sha256": "d49c0613ffe82b269a46d16e8985c448eada58aa112fa3b6ed148ec1757d0f13",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/notes/06_重复相同字节.md",
+      "bytes": 450,
+      "sha256": "fdb0d6ee5684e7044aa31883c8ee15b9b38e4268bbd8b35903da379c18f7efa9",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/notes/07_图片引用.md",
+      "bytes": 112,
+      "sha256": "af1e640a25341e017335eab44de96449f8b7b9a229e414b73ca819a5a33d323f",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/pdf/星河资料.pdf",
+      "bytes": 54274,
+      "sha256": "5e3427e6404ec980a1f13906eb17de0f23814a63d18fc7f6cd6284c93cf4f927",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/unicode/NFC/café.md",
+      "bytes": 39,
+      "sha256": "831dcadf2f606c1cd0c389c752cad49f3616e9a96e04a2248c0ce1c16e912317",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/unicode/NFD/café.md",
+      "bytes": 40,
+      "sha256": "b7e8868f97b3a43dad55328b1703802b1b20387d6952c0f24f29451b78ee4b57",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-0/batch-00.md",
+      "bytes": 68,
+      "sha256": "9b8700302689d1421440c314dc276b2c4b9bd2954c08181fe3bbc13bb4310fb3",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-0/batch-03.md",
+      "bytes": 68,
+      "sha256": "a7615f6beb7545b0aec80c465fb51314381b52e75a9d5d530407b60b3d97f17c",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-0/batch-06.md",
+      "bytes": 68,
+      "sha256": "8ff3b44d8c29aea504aa777924fe88f8192c07be2937ed2d77ae80b55397a38b",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-0/batch-09.md",
+      "bytes": 68,
+      "sha256": "07725889974dcfb93e50597b8f9327c8e489f4948be0cfca935e2a017926a6e6",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-0/batch-12.md",
+      "bytes": 69,
+      "sha256": "1d174b8f73ce97139de5fadc9d3242f071678e6523404d56aaba4cf07b89bd41",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-0/batch-15.md",
+      "bytes": 69,
+      "sha256": "45d82379be1faeda6a461d8ea6caa772cb5e7c6ac4a92ad2315d8f86e7f68daf",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-0/batch-18.md",
+      "bytes": 69,
+      "sha256": "08585d63b10ea01a9573cd45ba585707c67abeee02b1df10720019cd1c3f3d8d",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-0/batch-21.md",
+      "bytes": 69,
+      "sha256": "7f33110dcd8f318812c9b47734a747b78e45b8b850c215d9984858d027521a49",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-1/batch-01.md",
+      "bytes": 68,
+      "sha256": "03d52663fbc48cb6a1b6743795337d8030ecbdabc4c452bef2a3184d5f5dc119",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-1/batch-04.md",
+      "bytes": 68,
+      "sha256": "2d11a37dedf9411dc52361229fbd2a864f33cb3c9f30a747223b56a9324f400c",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-1/batch-07.md",
+      "bytes": 68,
+      "sha256": "ecbc44139fdc3bab71a54c9f468167e5ba0297b0b8dbeb5ea69e302381b3839b",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-1/batch-10.md",
+      "bytes": 69,
+      "sha256": "7780c71ecb81141a34908e0b1579a86d30d17fec8ecb325227122aa191c9c94b",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-1/batch-13.md",
+      "bytes": 69,
+      "sha256": "8fed80ca7ba6493c4856fc6692cb80be11a4a7e96cd88fa3677cdbca6b1f0a85",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-1/batch-16.md",
+      "bytes": 69,
+      "sha256": "baf0179728635975cbdcd75d9a53afe7fb51c930a110a58b712be1d6784b371c",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-1/batch-19.md",
+      "bytes": 69,
+      "sha256": "2f080653b4c195fc374799270bc2f2d2873a0496d496e3d0838bb9208332d189",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-1/batch-22.md",
+      "bytes": 69,
+      "sha256": "d0dc59eadbdd2f8e968389b973bdba8ce4f7b7ff0625ee98fdcdadd82d1393b7",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-2/batch-02.md",
+      "bytes": 68,
+      "sha256": "1bcd1db73e8744cd5fd87b8fd3ffb0042fe60a9b54a8faf8f7e0eb4555740f73",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-2/batch-05.md",
+      "bytes": 68,
+      "sha256": "44bd07f68518ceb15a92d19ec970621a4e9611e9d8fa6de4bb0034f00c4b4e36",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-2/batch-08.md",
+      "bytes": 68,
+      "sha256": "88d777c02b1d803d98f0cfa16541210ec66f977a19dcb18afb72ed3ed3ac4c1f",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-2/batch-11.md",
+      "bytes": 69,
+      "sha256": "64d4f81147b9db8a74b6c83b131ca8c2fbf98b03738e71df056498eeb260f051",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-2/batch-14.md",
+      "bytes": 69,
+      "sha256": "b767aef74bac84748508b98355ebf96d6b41ee5bf893ae8b3286a8d6c0edcb91",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-2/batch-17.md",
+      "bytes": 69,
+      "sha256": "913b13a13afe028984a9f625fb9b2722478c1e2896f516066067c780df3e636d",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-2/batch-20.md",
+      "bytes": 69,
+      "sha256": "e06d6c26b20c57412c4f24b69c5b8a4284e811b031d811cf89d3aae1378614a8",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/team-2/batch-23.md",
+      "bytes": 69,
+      "sha256": "d9ee1ca39737fa85afe06e60a793d49a67e3da502e0f2f278e1551f91ed8d741",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/watched/深层/二层/三层/边界.md",
+      "bytes": 42,
+      "sha256": "2f88d1cefec46de2bcd285a0794ee2ad1c65f470efa1c1012a50ed89a8e4e8f2",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/web/blacklist.txt",
+      "bytes": 97,
+      "sha256": "fd35184c3041d4c102bcf83a82e4679213f3e37d50572d45a480ab8d105ba9ed",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "importable/web/offline.html",
+      "bytes": 200,
+      "sha256": "4d2e2d12d68b747602e8b8e730562bd229b6959e2aa81bdad444a58887e509db",
+      "role": "fixture-合成输入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "oracle/expected.json",
+      "bytes": 2310,
+      "sha256": "774fe505def565170a81a4074bdc66bb7867c64ddddbd673d7e58de28e85c915",
+      "role": "oracle-禁止导入",
+      "validation": "预生成；产品用例未执行"
+    },
+    {
+      "path": "oracle/speech.txt",
+      "bytes": 142,
+      "sha256": "c3d22ee9ce4a7405adb9955710f876b670e8ead756c2a807c51da34aa60d32fb",
+      "role": "oracle-禁止导入",
+      "validation": "预生成；产品用例未执行"
+    }
+  ]
+}

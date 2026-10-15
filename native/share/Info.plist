@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleDisplayName</key><string>WhyWork 收件箱</string>
+<key>CFBundleName</key><string>WhyWorkShare</string>
+<key>CFBundleExecutable</key><string>WhyWorkShare</string>
+<key>CFBundleIdentifier</key><string>cn.cnluca0702.whywork.share</string>
+<key>CFBundlePackageType</key><string>XPC!</string>
+<key>CFBundleShortVersionString</key><string>0.1.0</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>LSMinimumSystemVersion</key><string>12.0</string>
+<key>NSExtension</key><dict>
+  <key>NSExtensionPointIdentifier</key><string>com.apple.share-services</string>
+  <key>NSExtensionPrincipalClass</key><string>ShareViewController</string>
+  <key>NSExtensionAttributes</key><dict>
+    <key>NSExtensionActivationRule</key><dict>
+      <key>NSExtensionActivationSupportsText</key><true/>
+      <key>NSExtensionActivationSupportsWebURLWithMaxCount</key><integer>20</integer>
+    </dict>
+  </dict>
+</dict>
+</dict></plist>

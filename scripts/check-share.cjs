@@ -1,0 +1,5 @@
+const fs=require('node:fs'),path=require('node:path'),{execFileSync}=require('node:child_process')
+const output=path.resolve('out/native/share-payload-check')
+fs.mkdirSync(path.dirname(output),{recursive:true})
+execFileSync('xcrun',['swiftc','native/share/SharePayload.swift','tests/support/share-payload-check.swift','-o',output],{stdio:'inherit',env:{...process.env,CLANG_MODULE_CACHE_PATH:path.resolve('.cache/swift')}})
+execFileSync(output,[],{stdio:'inherit'})

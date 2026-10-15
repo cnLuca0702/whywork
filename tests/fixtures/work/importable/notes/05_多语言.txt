@@ -1,0 +1,3 @@
+TEST_REMIO_3214
+中文：星河项目。English: synthetic fixture. 日本語：合成テストデータ。Français: données de test.
+Unicode: café, emoji 🧪🚀, 全角ＡＢＣ, 半角ABC.

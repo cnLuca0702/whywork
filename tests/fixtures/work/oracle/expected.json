@@ -1,0 +1,78 @@
+{
+  "scope": "只导入importable的指定子目录；oracle不可导入或监控，避免答案泄露",
+  "qa": [
+    {
+      "id": "QA01",
+      "question": "星河项目负责人是谁？",
+      "answer": "林晓雨",
+      "sources": [
+        "notes/01_星河项目.md#FACT-A01"
+      ]
+    },
+    {
+      "id": "QA02",
+      "question": "2026年10月1日批准的预算是多少？",
+      "answer": "120000元",
+      "sources": [
+        "notes/01_星河项目.md#FACT-A02"
+      ]
+    },
+    {
+      "id": "QA03",
+      "question": "截至2026年11月10日最新预算是多少，变化多少？",
+      "answer": "180000元，比初始增加60000元",
+      "sources": [
+        "notes/03_预算修订.md#FACT-R01",
+        "notes/01_星河项目.md#FACT-A02"
+      ]
+    },
+    {
+      "id": "QA04",
+      "question": "三个未解决问题分别是什么？",
+      "answer": [
+        "离线检索",
+        "音频恢复",
+        "附件完整性"
+      ],
+      "sources": [
+        "notes/02_会议纪要.md#FACT-M03"
+      ]
+    },
+    {
+      "id": "QA05",
+      "question": "星河项目实际利润是多少？",
+      "answer": "资料没有利润数据，应说明不足，不虚构数字",
+      "sources": [
+        "notes/02_会议纪要.md#FACT-M04",
+        "pdf/星河资料.pdf#PDF-P05"
+      ]
+    },
+    {
+      "id": "QA06",
+      "question": "What is the planned launch date for ORION-17?",
+      "answer": "January 15, 2027",
+      "sources": [
+        "notes/04_English.md#FACT-E01"
+      ]
+    },
+    {
+      "id": "QA07",
+      "question": "PDF的唯一定位码是什么？",
+      "answer": "PDF_TRACE_842",
+      "sources": [
+        "pdf/星河资料.pdf#PDF-P03"
+      ]
+    }
+  ],
+  "ocr_expected": [
+    "ORION-17",
+    "林晓雨",
+    "120000",
+    "2027-01-15",
+    "OCR_MARKER_742"
+  ],
+  "asr_expected": "Synthetic test. Project Orion seventeen. The budget is one hundred twenty thousand. The launch date is January fifteenth, twenty twenty seven.",
+  "asr_rule": "仅核查关键词/数字语义；标点大小写和自然TTS准确率不作绝对保证；静音/纯音不得照抄该文本",
+  "duplicates": "06与01字节相同；产品是否去重为探索性观察，不预设数量",
+  "unicode": "NFC/NFD放不同目录，避免本机规范化覆盖"
+}
