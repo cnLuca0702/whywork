@@ -1,23 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="blue" x1="0" y1="0" x2="0.4" y2="1"><stop stop-color="#38BDF8"/><stop offset="1" stop-color="#2563EB"/></linearGradient>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F0F9FF"/><stop offset="1" stop-color="#DBEAFE"/></linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b7bff"/>
+      <stop offset="1" stop-color="#4353f0"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dfe4ff"/>
+    </linearGradient>
   </defs>
-  <rect x="32" y="32" width="960" height="960" rx="228" fill="url(#bg)"/>
-  <g fill="none" stroke="url(#blue)" stroke-width="64" stroke-linecap="round">
-    <path d="M320 582 C280 696 230 744 151 690"/>
-    <path d="M358 618 C335 731 277 817 200 776"/>
-    <path d="M414 645 C418 795 350 872 300 823"/>
-    <path d="M474 650 C477 808 437 936 397 880"/>
-    <path d="M550 650 C547 808 587 936 627 880"/>
-    <path d="M610 645 C606 795 674 872 724 823"/>
-    <path d="M666 618 C689 731 747 817 824 776"/>
-    <path d="M704 582 C744 696 794 744 873 690"/>
+  <!-- 外框：大倒角 + 四周留边（不撑满画布） -->
+  <rect x="84" y="84" width="856" height="856" rx="252" fill="url(#bg)"/>
+
+  <!-- 八爪鱼主体：整体缩放居中，占内框 70%+ 且完全在框内 -->
+  <g transform="translate(512 512) scale(0.88) translate(-512 -512)">
+    <g stroke="#ffffff" stroke-width="66" stroke-linecap="round" fill="none" opacity="0.95">
+      <path d="M 372 636 C 312 748 226 786 156 766"/>
+      <path d="M 452 676 C 416 796 344 852 258 860"/>
+      <path d="M 572 676 C 608 796 680 852 766 860"/>
+      <path d="M 652 636 C 712 748 798 786 868 766"/>
+    </g>
+    <circle cx="512" cy="428" r="304" fill="url(#body)"/>
+    <ellipse cx="352" cy="502" rx="56" ry="36" fill="#ffb3c0" opacity="0.9"/>
+    <ellipse cx="672" cy="502" rx="56" ry="36" fill="#ffb3c0" opacity="0.9"/>
+    <circle cx="414" cy="404" r="62" fill="#0b1328"/>
+    <circle cx="610" cy="404" r="62" fill="#0b1328"/>
+    <circle cx="436" cy="382" r="21" fill="#ffffff"/>
+    <circle cx="632" cy="382" r="21" fill="#ffffff"/>
+    <path d="M 452 516 Q 512 570 572 516" stroke="#0b1328" stroke-width="26" stroke-linecap="round" fill="none"/>
+    <path d="M 452 148 Q 442 92 384 80" stroke="#ffffff" stroke-width="46" stroke-linecap="round" fill="none"/>
+    <path d="M 572 148 Q 582 92 640 80" stroke="#ffffff" stroke-width="46" stroke-linecap="round" fill="none"/>
+    <circle cx="382" cy="78" r="38" fill="#ffffff"/>
+    <circle cx="642" cy="78" r="38" fill="#ffffff"/>
+    <g stroke="url(#bg)" stroke-width="70" stroke-linecap="round" fill="none">
+      <path d="M 498 676 C 486 800 542 866 498 928"/>
+      <path d="M 526 676 C 538 800 482 866 526 928"/>
+    </g>
   </g>
-  <ellipse cx="512" cy="416" rx="250" ry="270" fill="url(#blue)"/>
-  <ellipse cx="420" cy="410" rx="52" ry="65" fill="#fff"/><ellipse cx="604" cy="410" rx="52" ry="65" fill="#fff"/>
-  <ellipse cx="434" cy="425" rx="24" ry="34" fill="#0F172A"/><ellipse cx="590" cy="425" rx="24" ry="34" fill="#0F172A"/>
-  <circle cx="443" cy="412" r="9" fill="#fff"/><circle cx="599" cy="412" r="9" fill="#fff"/>
-  <path d="M458 518 Q512 572 566 518" stroke="#fff" stroke-width="20" fill="none" stroke-linecap="round"/>
-  <ellipse cx="362" cy="493" rx="36" ry="20" fill="#7DD3FC"/><ellipse cx="662" cy="493" rx="36" ry="20" fill="#7DD3FC"/>
 </svg>

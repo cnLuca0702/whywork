@@ -3,6 +3,7 @@ import { Button, Modal, Tooltip, message } from 'antd'
 import { sys, useSysEvent } from './api'
 import { CloseOutlined, MessageOutlined, ExpandOutlined, CompressOutlined } from '@ant-design/icons'
 import Sidebar from './components/Sidebar'
+import ToolRail from './components/ToolRail'
 import ChatPanel from './components/ChatPanel'
 import StatusBar from './components/StatusBar'
 import NotesView from './views/NotesView'
@@ -10,6 +11,7 @@ import SettingsView from './views/SettingsView'
 import { useUiStore } from './store/ui'
 
 const ToolsView=lazy(()=>import('./views/ToolsView'))
+const RecordView=lazy(()=>import('./views/RecordView'))
 
 export default function App() {
   useSysEvent('app.capture_requested', payload => {
@@ -29,17 +31,18 @@ export default function App() {
         <section className="ww-surface ww-chat-pane" aria-label="对话工作区"><ChatPanel /></section>
         {view !== 'chat' && <section className="ww-surface ww-resource-pane" aria-label="资料工作区">
           <div className="ww-panel-bar">
-            <span>{view === 'settings' ? '设置' : view === 'tools' ? '工作工具' : '知识库'}</span>
+            <span>{view === 'settings' ? '设置' : view === 'tools' ? '工作工具' : view === 'record' ? '录音' : '知识库'}</span>
             <div className="ww-panel-actions">
               <Button type="text" size="small" icon={<MessageOutlined />} onClick={() => void useUiStore.getState().setView('chat')}>对话</Button>
               <Tooltip title={focusWorkspace ? '并排显示' : '展开工作区'}><Button aria-label={focusWorkspace ? '并排显示' : '展开工作区'} type="text" size="small" icon={focusWorkspace ? <CompressOutlined /> : <ExpandOutlined />} onClick={() => setFocusWorkspace(!focusWorkspace)} /></Tooltip>
               <Tooltip title="关闭资料区"><Button aria-label="关闭资料区" type="text" size="small" icon={<CloseOutlined />} onClick={() => void useUiStore.getState().setView('chat')} /></Tooltip>
             </div>
           </div>
-          <div className="min-h-0 flex-1">{view === 'settings' ? <SettingsView /> : view === 'tools' ? <Suspense fallback={<div className="p-6">加载工具…</div>}><ToolsView/></Suspense> : <NotesView />}</div>
+          <div className="min-h-0 flex-1">{view === 'settings' ? <SettingsView /> : view === 'tools' ? <Suspense fallback={<div className="p-6">加载工具…</div>}><ToolsView/></Suspense> : view === 'record' ? <Suspense fallback={<div className="p-6">加载录音…</div>}><RecordView/></Suspense> : <NotesView />}</div>
           <StatusBar />
         </section>}
       </main>
+      <ToolRail />
     </div>
   )
 }

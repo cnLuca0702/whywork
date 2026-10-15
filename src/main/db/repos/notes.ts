@@ -255,9 +255,10 @@ export function setNoteStatus(
 }
 
 export function softDeleteNote(noteId: string, tombstoneRel: string): void {
+  // 释放 relative_path（软删行改用 __deleted__/ 占位），避免同路径再导入触发 UNIQUE 冲突
   d()
-    .prepare('UPDATE notes SET deleted_at=? WHERE note_id=?')
-    .run(Date.now(), noteId)
+    .prepare('UPDATE notes SET deleted_at=?, relative_path=? WHERE note_id=?')
+    .run(Date.now(), `__deleted__/${noteId}`, noteId)
   removeFts(noteId)
   void tombstoneRel
 }
@@ -281,6 +282,11 @@ export function hardDeleteNoteRow(noteId: string): void {
 
 // ---------- FTS ----------
 
+/** unicode61 不切分 CJK：索引与查询统一在 CJK 字符间插入空格，使中文可按短语命中 */
+export function cjkPad(s: string): string {
+  return s.replace(/([\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af])(?=[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af])/g, '$1 ')
+}
+
 export function upsertFts(noteId: string): void {
   const note = getNote(noteId)
   if (!note) return
@@ -297,7 +303,7 @@ export function upsertFts(noteId: string): void {
       `INSERT INTO notes_fts(rowid, title, summary, keywords, body)
        SELECT rowid, ?, ?, ?, ? FROM notes WHERE note_id = ?`
     )
-    .run(note.title, note.summary ?? '', keywords, body, noteId)
+    .run(cjkPad(note.title), cjkPad(note.summary ?? ''), cjkPad(keywords), cjkPad(body), noteId)
 }
 
 export function removeFts(noteId: string): void {
@@ -316,8 +322,8 @@ export interface SearchHit {
 
 export function searchNotes(query: string, limit: number, opts: { excludeNoteId?: string } = {}): SearchHit[] {
   const out: SearchHit[] = []
-  // FTS 查询：对用户输入做短语包裹，避免操作符注入报错
-  const safe = query.replaceAll('"', '""')
+  // FTS 查询：CJK 填充 + 短语包裹（防操作符注入）
+  const safe = cjkPad(query).replaceAll('"', '""')
   const match = `"${safe}"`
   try {
     const rows = getDb()

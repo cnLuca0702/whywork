@@ -30,6 +30,15 @@ export function listProviderRows(): ProviderRow[] {
   return getDb().prepare('SELECT * FROM providers ORDER BY rowid').all() as ProviderRow[]
 }
 
+/** 主进程内部使用：解密已保存密钥（如 probe），不跨 IPC 返回明文 */
+export function decryptStoredKey(enc: Buffer): string {
+  try {
+    return safeStorage.decryptString(enc)
+  } catch {
+    return ''
+  }
+}
+
 function decodeKey(row: ProviderRow): string {
   if (!row.api_key_enc) return ''
   try {

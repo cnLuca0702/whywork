@@ -60,7 +60,7 @@ body,
 * {
   scrollbar-width: thin;
 }
-.ww-root { height: 100%; width: 100%; color: var(--ww-text); background: var(--ww-bg); }
+/* 深色类挂在 <html>（main.tsx），弹层与主树共享同一套令牌 */
 
 /* ---------- ProseMirror 编辑器 ---------- */
 .pm-editor .ProseMirror {
@@ -76,9 +76,11 @@ body,
 .pm-editor .ProseMirror h2 { font-size: 1.35em; font-weight: 600; margin: 0.8em 0 0.4em; }
 .pm-editor .ProseMirror h3 { font-size: 1.15em; font-weight: 600; margin: 0.7em 0 0.3em; }
 .pm-editor .ProseMirror blockquote {
-  border-left: 3px solid #d0d0d0;
-  padding-left: 12px;
-  color: #666;
+  border-left: none;
+  background: var(--ww-hover);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: var(--ww-text-2);
   margin: 0.6em 0;
 }
 .pm-editor .ProseMirror pre {
@@ -247,7 +249,7 @@ button:focus-visible { outline:2px solid var(--ww-primary); outline-offset:2px; 
 .ww-provider-settings h2{font-size:24px;font-weight:650;margin:0 0 22px}
 .ww-provider-tabs{display:flex;flex-wrap:wrap;gap:12px 24px;padding:22px 0;margin-bottom:24px;border-top:1px solid var(--ww-border);border-bottom:1px solid var(--ww-border)}
 .ww-provider-tabs .ant-radio-wrapper{font-size:16px;margin:0}
-.ww-provider-notice{padding:16px 20px;margin-bottom:18px;border-left:3px solid #b7b9ff;border-radius:7px;background:color-mix(in srgb,var(--ww-primary) 8%,transparent);color:var(--ww-primary);line-height:1.7}
+.ww-provider-notice{padding:14px 18px;margin-bottom:18px;border-radius:8px;background:color-mix(in srgb,var(--ww-primary) 7%,transparent);color:var(--ww-primary);line-height:1.7}
 .ww-provider-list{display:flex;flex-direction:column;gap:16px;margin-bottom:18px}
 .ww-provider-row{display:flex;align-items:center;gap:16px;padding:20px 18px;border:1px solid var(--ww-border);border-radius:12px;min-width:0}
 .ww-provider-detail{flex:1;min-width:0;overflow-wrap:anywhere}
@@ -261,3 +263,127 @@ button:focus-visible { outline:2px solid var(--ww-primary); outline-offset:2px; 
 .ww-model-status{font-size:11px;color:var(--ww-text-3);margin:6px 8px 0;line-height:1.5;overflow-wrap:anywhere}
 .ww-composer-meta{flex-wrap:wrap;gap:6px}
 @media(max-width:600px){.ww-provider-row{gap:8px;padding:14px 10px}.ww-provider-tabs{gap:12px}.ww-provider-tabs .ant-radio-wrapper{font-size:14px}.ww-provider-settings h2{font-size:21px}}
+
+/* ---------- 无边框融合规范：按钮/输入/选择与背景融为一体（用户要求） ---------- */
+
+/* 默认按钮：透明无边框，悬停浮现软底 */
+.ant-btn-default {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.ant-btn-default:not(:disabled):hover {
+  background: var(--ww-hover) !important;
+  border-color: transparent !important;
+}
+.ant-btn-default:not(:disabled):active {
+  background: var(--ww-primary-soft) !important;
+}
+/* 文本/ghost 按钮同样去描边 */
+.ant-btn-text,
+.ant-btn-ghost {
+  box-shadow: none !important;
+}
+
+/* 输入框：无边框 + 融合底色；聚焦细环 */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-password,
+textarea.ant-input {
+  background: var(--ww-hover) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.ant-input::placeholder,
+textarea.ant-input::placeholder {
+  color: var(--ww-text-3) !important;
+}
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:focus-within {
+  background: var(--ww-card) !important;
+  border-color: var(--ww-primary) !important;
+  box-shadow: 0 0 0 2px var(--ww-primary-soft) !important;
+}
+.ant-input-password-icon,
+.ant-input-clear-icon {
+  color: var(--ww-text-3) !important;
+}
+/* 输入前置/后置标签（addon）同步融合 */
+.ant-input-group-addon {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--ww-text-2) !important;
+}
+.ant-input-group .ant-input {
+  background: var(--ww-hover) !important;
+}
+
+/* 选择框 Select：无边框，选区融合 */
+.ant-select .ant-select-selector {
+  background: var(--ww-hover) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+.ant-select:not(.ant-select-disabled):not(.ant-select-focused):hover .ant-select-selector {
+  background: var(--ww-hover) !important;
+  border-color: transparent !important;
+}
+.ant-select-focused .ant-select-selector,
+.ant-select .ant-select-selector:focus,
+.ant-select-open .ant-select-selector {
+  background: var(--ww-card) !important;
+  border-color: var(--ww-primary) !important;
+  box-shadow: 0 0 0 2px var(--ww-primary-soft) !important;
+}
+.ant-select-arrow {
+  color: var(--ww-text-3) !important;
+}
+/* 下拉面板同样去生硬描边 */
+.ant-select-dropdown {
+  border: 1px solid var(--ww-border) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* 卡片与抽屉：弱化默认描边 */
+.ant-card {
+  border-color: var(--ww-border) !important;
+  box-shadow: none !important;
+}
+
+/* 表单内的 Select 占满整行（label 内联会导致塌缩） */
+.ww-provider-form .ant-select { width: 100%; }
+
+/* ---------- 最右侧工具竖栏 ---------- */
+.ww-rail {
+  width: 52px;
+  flex: 0 0 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 0 14px;
+  background: var(--ww-sidebar);
+  border-left: 1px solid var(--ww-border);
+  overflow-y: auto;
+}
+.ww-rail-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ww-text-2);
+  font-size: 17px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.ww-rail-btn:hover { background: var(--ww-hover); color: var(--ww-text); }
+.ww-rail-btn.is-active { background: var(--ww-primary-soft); color: var(--ww-primary); }
+.ww-rail-sep { height: 1px; width: 24px; margin: 6px auto; background: var(--ww-border); }

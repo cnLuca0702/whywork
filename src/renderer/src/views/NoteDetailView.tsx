@@ -298,7 +298,7 @@ export default function NoteDetailView() {
         <aside className="ww-note-links w-48 shrink-0 overflow-y-auto border-l border-gray-200 px-4 py-3 text-sm dark:border-[#2a2a2a] lg:block">
           <div className="mb-1 text-xs font-medium text-[var(--ww-text-3)]">出链（{links.out.length}）</div>
           <div className="mb-4 flex flex-wrap gap-1">
-            {links.out.length === 0 && <span className="text-xs text-gray-300">无</span>}
+            {links.out.length === 0 && <span className="text-xs text-[var(--ww-text-3)]">无</span>}
             {links.out.map((l) => (
               <button
                 key={l.id}
@@ -317,11 +317,11 @@ export default function NoteDetailView() {
 
           <div className="mb-1 text-xs font-medium text-[var(--ww-text-3)]">入链（{links.in.length}）</div>
           <div className="mb-4 flex flex-wrap gap-1">
-            {links.in.length === 0 && <span className="text-xs text-gray-300">无</span>}
+            {links.in.length === 0 && <span className="text-xs text-[var(--ww-text-3)]">无</span>}
             {links.in.map((l) => (
               <button
                 key={l.id}
-                className="rounded bg-[var(--ww-hover)] px-1.5 py-0.5 text-xs text-[var(--ww-text-2)] hover:bg-gray-200 dark:bg-[#2a2a2a] dark:text-gray-300"
+                className="rounded bg-[var(--ww-hover)] px-1.5 py-0.5 text-xs text-[var(--ww-text-2)] hover:bg-gray-200 dark:bg-[#2a2a2a] dark:text-[var(--ww-text-3)]"
                 onClick={() => setActiveNote(l.sourceNoteId!)}
               >
                 {l.sourceTitle}
@@ -346,7 +346,7 @@ export default function NoteDetailView() {
             </div>
           )}
 
-          <div className="mt-4 truncate text-xs text-gray-300" title={note.relativePath}>
+          <div className="mt-4 truncate text-xs text-[var(--ww-text-3)]" title={note.relativePath}>
             {note.relativePath}
           </div>
         </aside>

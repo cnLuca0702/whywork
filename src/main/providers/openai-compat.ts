@@ -22,7 +22,7 @@ export const PRESET_PROVIDERS: { kind?: 'openai-compat'|'anthropic'; id: string;
   {
     id: 'glm',
     name: '智谱 GLM',
-    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4',
     models: ['glm-4.6', 'glm-4.5-air', 'glm-4.5']
   },
   {

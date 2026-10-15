@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type View = 'chat' | 'notes' | 'settings' | 'tools'
+export type View = 'chat' | 'notes' | 'settings' | 'tools' | 'record'
 export type NoteFilter = 'all' | 'favorite' | 'pinned' | 'later' | 'unprocessed' | 'trash'
 let leaveViewGuard: (()=>Promise<boolean>) | null = null
 let navigationPending = false

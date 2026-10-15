@@ -11,32 +11,40 @@ const APP_FONT =
 
 function Root() {
   const [prefersDark,setPrefersDark] = useState(()=>window.matchMedia('(prefers-color-scheme: dark)').matches)
-  useEffect(()=>{const query=window.matchMedia('(prefers-color-scheme: dark)'),update=()=>setPrefersDark(query.matches);query.addEventListener('change',update);return()=>query.removeEventListener('change',update)},[])
+  useEffect(()=>{
+    const query=window.matchMedia('(prefers-color-scheme: dark)')
+    const update=()=>{
+      setPrefersDark(query.matches)
+      // dark 类挂到 <html>：antd 弹层（Modal/Select 下拉）挂在 body 下，必须能取到 CSS 变量
+      document.documentElement.classList.toggle('dark', query.matches)
+    }
+    update()
+    query.addEventListener('change',update)
+    return()=>query.removeEventListener('change',update)
+  },[])
   return (
-    <div className={'ww-root'+(prefersDark ? ' dark' : '')}>
-      <ConfigProvider
-        locale={zhCN}
-        theme={{
-          algorithm: prefersDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-          token: {
-            colorPrimary: prefersDark ? '#7b8aff' : '#5768ff',
-            colorInfo: prefersDark ? '#7b8aff' : '#5768ff',
-            borderRadius: 6,
-            fontFamily: APP_FONT,
-            colorBgLayout: prefersDark ? '#15171c' : '#f3f4f6',
-            colorBgContainer: prefersDark ? '#20232b' : '#ffffff',
-            colorBorder: prefersDark ? '#626d80' : '#e9ebef',
-            colorBorderSecondary: prefersDark ? '#1e2333' : '#f0f0f4',
-            colorText: prefersDark ? '#e8eaf2' : '#15141a',
-            colorTextSecondary: prefersDark ? '#9ca3ad' : '#73777f',
-            colorTextTertiary: prefersDark ? '#9aa3b3' : '#858d9c',
-            colorTextPlaceholder: prefersDark ? '#9aa3b3' : '#73777f'
-          }
-        }}
-      >
-        <App />
-      </ConfigProvider>
-    </div>
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        algorithm: prefersDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        token: {
+          colorPrimary: prefersDark ? '#7b8aff' : '#5768ff',
+          colorInfo: prefersDark ? '#7b8aff' : '#5768ff',
+          borderRadius: 6,
+          fontFamily: APP_FONT,
+          colorBgLayout: prefersDark ? '#15171c' : '#f3f4f6',
+          colorBgContainer: prefersDark ? '#20232b' : '#ffffff',
+          colorBorder: prefersDark ? '#626d80' : '#e9ebef',
+          colorBorderSecondary: prefersDark ? '#1e2333' : '#f0f0f4',
+          colorText: prefersDark ? '#e8eaf2' : '#15141a',
+          colorTextSecondary: prefersDark ? '#9ca3ad' : '#73777f',
+          colorTextTertiary: prefersDark ? '#9aa3b3' : '#858d9c',
+          colorTextPlaceholder: prefersDark ? '#9aa3b3' : '#73777f'
+        }
+      }}
+    >
+      <App />
+    </ConfigProvider>
   )
 }
 

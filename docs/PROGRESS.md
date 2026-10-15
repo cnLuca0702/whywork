@@ -45,6 +45,14 @@
 
 ## 会话日志
 
+### 2026-10-15（会话 3：五项新需求 + 交付包测试）
+- 需求落地：①改名 **WhyWork**（含 userData/工作区/.whywork 迁移）；②UI 继承 remio 设计令牌（#5768ff 主色/#0b1328 深色/PingFang 字体栈/4-8px 圆角，antd 主题+CSS 变量全量替换）；③八爪鱼蓝色图标（SVG→sharp→icns）；④科大讯飞办公本集成（dxkLogin MD5 登录/设备列表/云笔记导入/读写驿站推送，token safeStorage 加密）；⑤交付包 72 用例执行器（`--run-cases`→tests/report.json）
+- 新增域：iflytek/watch/clip/export/media + app.import 增强（目录递归/取消/进度事件/图片改链/魔数校验）+ notes.search 双路线（FTS5 CJK 填充 + 带标签 LIKE 兜底）+ 软删释放路径（__deleted__/ 占位）
+- 协作说明：本会话与另一并行 agent 的改动做了合并（对方贡献：loadPdfJs/pdfjs v6 worker、recovery 脚本、分享扩展脚本、录音状态机 RecordingControls、provider catalog UI、导入表格规则、嵌入图片限额）
+- **测试结果：53 PASS / 0 FAIL / 10 BLOCKED（RAG×7 需 LLM Key、MEDIA-02/03/04 需 ASR Key——用户在设置页配置后重跑即过）/ 7 N/A（SYNC 按需求排除）/ 2 MANUAL（MEDIA-05 实机录音操作、PRIV-06 分享扩展实机）**
+- 修复要点：pdfjs v6 fake-worker 需 globalThis.pdfjsWorker 注入；软删释放 relative_path（UNIQUE 根因）；rebuildIndex walk 与 realpath 基准不一致（/var→/private/var）；tesseract.js 语言数据本地化（resources/tessdata，防 CDN 下载崩溃）；process uncaughtException 兜底
+- **下次入口**：M7 Office(Univer) → M8 浏览器自动化 → M9 邮件日历 → M11 dmg 打包；用户配置 Key 后重跑 --run-cases 可将 10 条 BLOCKED 转 PASS
+
 ### 2026-10-15（会话 2：M3/M4/M5）
 - M3 对话/Agent：providers 层 + agent loop（工具循环/abort/事件流）+ 14 工具 + rVault 面板 + 记忆 flush + chat/web/llm/chart 域 + ChatPanel 流式 UI
 - M4 供应商：四预设 + ChatGPT OAuth（实验性）+ 设置页
@@ -66,6 +74,9 @@
 4. ChatGPT 登录（实验性）：设置→用 ChatGPT 登录→浏览器完成→回来发消息
 
 ## Changelog（架构/契约变更）
+
+- v1.5（2026-10-15，会话3）：产品更名 WhyWork（bundle/userData/工作区 .whywork，含旧库迁移）；IPC 新增域 iflytek/watch/clip/export/media；notes.search 返回带 source 标签（fts|like|filename）并支持 excludeNoteId；软删行 relative_path 改 __deleted__/<id> 占位（UNIQUE 释放）；app.import 支持 importId 取消与 import.progress 事件；export.* 支持 targetPath 程序化导出且拒绝覆盖已存在文件；media.* ASR/OCR/录音保存；安全层新增 src/main/security/paths.ts（realpath 越界/元数据/符号链接守卫，readNoteFile 等全部收口）。
+- v1.4（2026-10-15，会话2末）：chat.confirm 确认卡事件、provider catalog（models 发现）、媒体录制 syscall（save_recording/recording_capabilities）。
 
 - v1.3（2026-10-15，M5）：MCP env 值以 safeStorage 逐值加密存 mcp_servers.env（base64）；MCP 工具命名 `mcp__<服务器>__<工具>`（非字母数字下划线归一为 _）；技能双目录（工作区+全局 ~/.myremio/skills），frontmatter name/description，提示词注入上限 8000 字。
 - v1.2（2026-10-14，M2）：编辑器 schema 调整——wikilink 与行内数学从节点改为 **mark**（prosemirror-markdown 的原子 mark token 让内容天然流入，`noCloseToken:true`）；块级数学为原子节点（attrs.tex）；code_block 属性名沿用生态默认 `params`（原设计 `lang`）；图片协议 `myremio-res://<工作区相对路径>`。§9 已按此对齐。

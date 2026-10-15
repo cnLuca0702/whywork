@@ -7,7 +7,8 @@ import { registerPairingDomain } from './syscalls/pairing'
 import { closeBrowser } from './services/browser'
 import { stopPairing } from './services/pairing'
 import { queueCaptureUrl, flushCaptureUrls, registerCaptureShortcuts } from './services/capture'
-import { app, BrowserWindow, Menu, protocol, net, shell } from 'electron'
+import { app, BrowserWindow, protocol, net, shell } from 'electron'
+import { setupAppMenu, popupEditContextMenu } from './menu'
 import path from 'node:path'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -51,7 +52,7 @@ if (testRoot) {
   fs.mkdirSync(app.getPath('sessionData'), { recursive: true })
   setWorkspacePath(path.join(testRoot, 'workspace'))
 }
-Menu.setApplicationMenu(null)
+setupAppMenu() // ⚠ 不能置空：macOS 系统复制粘贴快捷键由菜单角色承载（含右键菜单依赖）
 
 // 进程级兜底：worker/原生库的未捕获异常只记日志，不弹系统错误框（--run-cases 自动化依赖）
 process.on('uncaughtException', (e) => { console.error('[uncaughtException]', e); if(testMode)app.exit(1) })
@@ -82,6 +83,7 @@ function createWindow(): void {
     if(process.env.ELECTRON_RENDERER_URL && new URL(url).origin===new URL(process.env.ELECTRON_RENDERER_URL).origin)return
     event.preventDefault();if(/^(https?:|mailto:)/i.test(url))void shell.openExternal(url)
   })
+  mainWindow.webContents.on('context-menu', (_e, params) => popupEditContextMenu(params))
   mainWindow.on('ready-to-show', () => mainWindow?.show())
   mainWindow.webContents.on('did-finish-load', () => {
     if(uiCheck)mainWindow?.setTitle('WhyWork（隔离验证）')

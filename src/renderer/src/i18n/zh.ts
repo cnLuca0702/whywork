@@ -1,7 +1,7 @@
 /** 中文字典（DEVELOPMENT.md §10：组件禁止硬编码文案） */
 export const zh = {
   'app.name': 'WhyWork',
-  'app.tagline': '本地优先的 AI 知识库',
+  'app.tagline': '本地会议录制 · AI 知识库',
   'nav.all': '全部笔记',
   'nav.favorite': '收藏',
   'nav.pinned': '置顶',

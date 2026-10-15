@@ -171,7 +171,8 @@ export function registerNotesDomain(): void {
           )
           .get(`%"noteId":"${p.noteId}"%`) as { change_id: string; snapshot_path: string | null; path: string } | undefined
         if (!row?.snapshot_path || !fs.existsSync(wsJoin(row.snapshot_path))) throw new Error('恢复快照缺失，未更改回收站状态')
-        let restoredRel = note.relative_path
+        // 软删时 relative_path 已改为 __deleted__/ 占位：恢复时按标题重新分配
+        let restoredRel = note.relative_path.startsWith('__deleted__/') ? allocateNotePath(note.title) : note.relative_path
         if (row?.snapshot_path) {
           const tombAbs = wsJoin(row.snapshot_path)
           if (fs.existsSync(tombAbs)) {
@@ -331,14 +332,16 @@ export function registerNotesDomain(): void {
 
 /** app.rebuild_index 用：扫描 notes/ 重建索引（文件为准） */
 export function rebuildIndex(): { scanned: number; created: number; updated: number; removed: number } {
-  const notesDir = wsJoin('notes')
+  // wsJoin 返回 realpath（/var→/private/var）；相对路径必须与同一基准计算，否则产生 ../ 前缀
+  const wsBase = fs.realpathSync(getWorkspacePath())
+  const notesDir = path.join(wsBase, 'notes')
   const files: string[] = []
   const walk = (dir: string): void => {
     for (const name of fs.readdirSync(dir)) {
       const abs = path.join(dir, name)
       if(fs.lstatSync(abs).isSymbolicLink())continue
       if (fs.statSync(abs).isDirectory()) walk(abs)
-      else if (name.endsWith('.md')) files.push(path.relative(getWorkspacePath(), abs))
+      else if (name.endsWith('.md')) files.push(path.relative(wsBase, abs))
     }
   }
   if (fs.existsSync(notesDir)) walk(notesDir)

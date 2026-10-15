@@ -41,14 +41,11 @@ export async function modelCatalog(refresh=false):Promise<CatalogProvider[]>{
     const canUse=ready(r)
     let entry=cache.get(key(r))
     if(canUse&&(refresh||!entry||Date.now()-entry.checkedAt>TTL))entry=await discover(r)
-    let models:CatalogModel[]=(entry?.models??[]).map(m=>({...m}))
-    // Custom IDs remain selectable when discovery is unsupported. ChatGPT's successful
-    // account catalog is authoritative: do not resurrect unavailable OAuth models.
-    if(r.kind!=='chatgpt'||!entry||entry.failed){
-      for(const id of configuredModels(r))if(!models.some(m=>m.id===id))models.push({id,label:id,source:'configured'})
-    }
+    // 生效列表 = 用户在供应商设置中勾选的模型（唯一事实）。
+    // 在线发现的目录只用于状态展示与设置页的拉取候选，不自动进入对话选择器。
+    const models:CatalogModel[]=configuredModels(r).map(id=>({id,label:id,source:'configured' as const}))
     return {id:r.id,name:r.kind==='chatgpt'?'Codex · ChatGPT':r.name,enabled:!!r.enabled,ready:canUse,models,
-      status:!r.enabled?'已停用':!canUse?'需要配置密钥或重新授权':entry?.failed?'目录读取失败；已配置模型尚未验证':!models.length?'未返回可用模型':'目录可用；模型未进行推理验证',checkedAt:entry?.checkedAt}
+      status:!r.enabled?'已停用':!canUse?'需要配置密钥或重新授权':!models.length?'尚未选择生效模型（到设置中拉取并勾选）':entry?.failed?'目录读取失败；显示已勾选模型':'已就绪（勾选 '+models.length+' 个）',checkedAt:entry?.checkedAt}
   }))
   if(dbPath()!==workspace)throw new Error('工作区已切换，请刷新模型')
   // Discard a response if settings changed while the network request was pending.

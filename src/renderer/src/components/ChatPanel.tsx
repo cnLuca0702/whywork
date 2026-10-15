@@ -6,14 +6,14 @@ import {
   PlusOutlined,
   SendOutlined,
   StopOutlined,
-  ReloadOutlined,
   SafetyCertificateOutlined,
   RollbackOutlined,
   FolderOpenOutlined,
   FileTextOutlined,
   TableOutlined,
   CalendarOutlined,
-  AudioOutlined
+  AudioOutlined,
+  SettingOutlined
 } from '@ant-design/icons'
 import { sys, useSysEvent } from '../api'
 import { useChatStore, wireChatEvents, type ChatMsg } from '../store/chat'
@@ -23,7 +23,7 @@ wireChatEvents()
 
 function ToolCard({ name, phase, output }: { name: string; phase: string; output?: string }) {
   return (
-    <div className="my-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs dark:border-[#333] dark:bg-[#1d1d1d]">
+    <div className="my-1 rounded-md border border-[var(--ww-border)] bg-[var(--ww-hover)] px-2 py-1 text-xs">
       <span className="font-mono text-[var(--ww-primary)]">{name}</span>
       {phase === 'start' ? (
         <Spin size="small" className="ml-2" />
@@ -33,7 +33,7 @@ function ToolCard({ name, phase, output }: { name: string; phase: string; output
         </Tag>
       )}
       {output && (
-        <div className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-all text-gray-500">{output}</div>
+        <div className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-all text-[var(--ww-text-3)]">{output}</div>
       )}
     </div>
   )
@@ -93,7 +93,7 @@ function VaultDrawer({ open, onClose, chatId }: { open: boolean; onClose: () => 
       ) : (
         <div className="space-y-2">
           {rows.map((r) => (
-            <div key={r.change_id} className="flex items-center gap-2 rounded-md border border-gray-200 p-2 text-xs dark:border-[#333]">
+            <div key={r.change_id} className="flex items-center gap-2 rounded-md border border-[var(--ww-border)] p-2 text-xs">
               <Tag color={r.kind === 'note' ? 'blue' : 'cyan'}>{r.kind}</Tag>
               <Tag>{r.op}</Tag>
               <span className="min-w-0 flex-1 truncate" title={r.path}>
@@ -258,18 +258,18 @@ export default function ChatPanel() {
           )}
         </div>
       </div>
-      <div className="ww-composer-meta"><span><FolderOpenOutlined/> {activeNoteId ? '当前笔记上下文' : '本地知识库'}</span><span className="flex-1"/>
-        <Select aria-label="选择供应商和模型" showSearch optionFilterProp="label" size="small" value={selectionKey}
-          placeholder="选择模型" loading={catalogLoading} disabled={streaming||sending} style={{flex:'1 1 240px',minWidth:0,maxWidth:'100%'}}
-          popupMatchSelectWidth={false} styles={{popup:{root:{maxWidth:'min(600px, 90vw)'}}}}
-          labelRender={()=>selectedModel?`${provider?.name} / ${selectedModel.label}`:selection?`${selection.providerId} / ${selection.model}（需重新选择）`:'选择模型'}
-          notFoundContent={catalogLoading?'正在读取目录…':'没有可选模型，请先配置或刷新'}
-          onChange={v=>{const [providerId,model]=JSON.parse(v);void setModel({providerId,model}).catch(e=>message.error(String(e)))}} options={options}/>
-        <Button size="small" type="text" aria-label="刷新模型目录" title="仅刷新目录，不调用模型推理" icon={<ReloadOutlined/>} loading={catalogLoading} disabled={streaming||sending} onClick={()=>void loadCatalog(true)}/>
-        <Button type="link" size="small" onClick={()=>void setView('settings')}>模型设置</Button>
-
+      <div className="ww-composer-meta">
+        <span><FolderOpenOutlined/> {activeNoteId ? '笔记上下文' : '本地知识库'}</span>
+        <span className="flex-1"/>
+        <Select aria-label="选择模型" showSearch optionFilterProp="label" size="small" value={selectionKey}
+          placeholder="模型" loading={catalogLoading} disabled={streaming||sending}
+          style={{width:170}} popupMatchSelectWidth={200}
+          labelRender={()=>selectedModel?selectedModel.label:selection?`${selection.model}（需重选）`:'模型'}
+          notFoundContent={catalogLoading?'正在读取目录…':'没有可选模型'}
+          onChange={v=>{const [providerId,model]=JSON.parse(v);void setModel({providerId,model}).catch(e=>message.error(String(e)))}}
+          options={options}
+          dropdownRender={node=>(<div onMouseDown={e=>e.preventDefault()}>{node}<div className="border-t border-[var(--ww-border)] p-1.5"><Button size="small" type="primary" block icon={<SettingOutlined/>} onClick={()=>setView('settings')}>AI 设置</Button></div></div>)}/>
       </div>
-      <div className="ww-model-status" role="status">{catalogError||(!selection?'请先选择模型；旧会话需要重新选择一次。':!modelReady&&!catalogLoading?'所选模型不可用，请刷新目录或检查设置。':catalogLoading?'正在读取模型目录…':selectedModel?.source==='configured'?'该模型由你配置，尚未确认调用权限。': '目录已返回该模型；调用权限以实际请求为准。')}</div>
       {empty && <div className="ww-quick-actions">
         <button onClick={()=>void useUiStore.getState().setToolsTab('office')}><span className="ww-quick-icon is-green"><TableOutlined/></span>表格处理</button>
         <button onClick={()=>void setView('notes')}><span className="ww-quick-icon is-blue"><FileTextOutlined/></span>笔记编辑</button>

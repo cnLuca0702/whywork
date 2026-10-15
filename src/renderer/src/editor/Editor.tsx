@@ -265,7 +265,7 @@ export default function NoteEditor({ noteId, initialBody, onSave, titles }: Note
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-1 border-b border-gray-200 px-4 py-1.5 dark:border-[#2a2a2a]">
+      <div className="flex items-center gap-1 border-b border-[var(--ww-border)] px-4 py-1.5">
         {[
           { icon: <BoldOutlined />, title: '加粗 ⌘B', fn: run.bold },
           { icon: <ItalicOutlined />, title: '斜体 ⌘I', fn: run.italic },
@@ -279,7 +279,7 @@ export default function NoteEditor({ noteId, initialBody, onSave, titles }: Note
         ].map((b, i) => (
           <Tooltip key={i} title={b.title}>
             <button
-              className="rounded px-2 py-1 text-sm text-[var(--ww-text-2)] hover:bg-[var(--ww-hover)] dark:text-gray-300 dark:hover:bg-[#2a2a2a]"
+              className="rounded px-2 py-1 text-sm text-[var(--ww-text-2)] hover:bg-[var(--ww-hover)] dark:text-[var(--ww-text-3)] dark:hover:bg-[#2a2a2a]"
               onClick={b.fn}
               type="button"
             >
@@ -296,7 +296,7 @@ export default function NoteEditor({ noteId, initialBody, onSave, titles }: Note
       </div>
 
       {s && s.items.length > 0 && (
-        <div className="absolute bottom-24 left-1/2 z-20 w-72 -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-[#3a3a3a] dark:bg-[#252525]">
+        <div className="absolute bottom-24 left-1/2 z-20 w-72 -translate-x-1/2 rounded-lg border border-[var(--ww-border)] bg-[var(--ww-card)] p-1 shadow-lg">
           {s.items.map((item, i) => (
             <button
               key={item}

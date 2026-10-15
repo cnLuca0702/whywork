@@ -3,14 +3,13 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { XMLParser } from 'fast-xml-parser'
 import TurndownService from 'turndown'
-import { createRequire } from 'node:module'
-import { app } from 'electron'
 import { parseFrontmatter } from '../db/notes-file'
-import { pathToFileURL } from 'node:url'
 export async function loadPdfJs() {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-  const req = createRequire(path.join(app.getAppPath(), 'package.json'))
-  pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(req.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')).href
+  // pdfjs v6 在 Node/Electron 主进程：直接注入 worker 模块（官方 fake-worker 通道），
+  // 避免任何 workerSrc 路径解析问题
+  const w = (await import('pdfjs-dist/legacy/build/pdf.worker.mjs')) as unknown as Record<string, unknown>
+  ;(globalThis as Record<string, unknown>)['pdfjsWorker'] = w
   return pdfjs
 }
 

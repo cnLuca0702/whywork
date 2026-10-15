@@ -36,7 +36,16 @@ export class RecordingController{
    }
    for(const t of source.stream.getTracks())t.onended=()=>{if(epoch===this.epoch)this.finish()}
    rec.start();this.began=this.now();this.set({phase:'recording'})
-  }catch(e){if(epoch===this.epoch)this.fail(`录音未开始：${e instanceof Error?e.message:String(e)}。请检查设备和既有授权。`)}
+  }catch(e){
+    if(epoch!==this.epoch)return
+    const name=e instanceof DOMException?e.name:''
+    const msg=e instanceof Error?e.message:String(e)
+    const hint=name==='NotAllowedError'||name==='SecurityError'
+      ?'麦克风权限不足：请在 系统设置 → 隐私与安全性 → 麦克风 中允许 WhyWork 后重试；本应用不会隐式申请其他权限。'
+      :name==='NotFoundError'?'未找到可用麦克风设备，请检查系统输入设备设置。'
+      :`录音未开始：${msg}。请检查设备和既有授权。`
+    this.fail(hint)
+  }
  }
  pause(){if(this.state.phase!=='recording')return;try{this.recorder!.pause();this.freeze();this.set({phase:'paused',durationMs:this.elapsed})}catch{this.fail('暂停失败，录音已停止且未保存')}}
  resume(){if(this.state.phase!=='paused')return;try{this.recorder!.resume();this.began=this.now();this.set({phase:'recording'})}catch{this.fail('继续录音失败，未保存')}}

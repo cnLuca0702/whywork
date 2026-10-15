@@ -57,7 +57,7 @@ function NoteCard({ note }: { note: NoteListItem }) {
         <FileTextOutlined className="text-[var(--ww-primary)]"/><span className="min-w-0 flex-1 truncate font-medium">{note.title}</span>
         <span className="ml-2 shrink-0 text-xs text-[var(--ww-text-3)]">{fmtTime(note.modifiedAt)}</span>
       </div>
-      <div className="mb-2 line-clamp-2 min-h-[2.5rem] text-xs text-gray-500 dark:text-[var(--ww-text-3)]">
+      <div className="mb-2 line-clamp-2 min-h-[2.5rem] text-xs text-[var(--ww-text-3)] dark:text-[var(--ww-text-3)]">
         {note.searchSnippet || note.summary || '暂无摘要，打开查看正文'}
       </div>
       <div className="flex items-center gap-2 text-[var(--ww-text-3)]">

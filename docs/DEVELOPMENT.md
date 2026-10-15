@@ -458,6 +458,7 @@ npm test               # vitest run
 
 - **代码约定**：TS strict；文件 kebab-case；syscall 域文件只导出 `register(domain)`；所有 IPC 载荷必须有 zod schema；禁止 `any` 出现在契约边界。
 - **禁止行为**：见 §1.1 Forbidden List；另：不引入登录类依赖（firebase/supabase auth 等）、不做云函数、不为绕过确认策略修改 agent 提示词。
+- **生效纪律**：每次修复后判断——`src/renderer/**` 走 HMR 热更；`src/main/**`/`src/preload/**` 改动**直接重启 dev**（pkill electron-vite dev → npm run dev → pgrep 确认），不询问不等确认（用户要求，2026-10-15）。
 - **进度纪律**：每完成一个里程碑 → 更新 `docs/PROGRESS.md`（状态、提交说明、遗留、下次入口）；改动架构/契约 → 同步改本文档并在 PROGRESS.md 记 changelog。
 - **接手入口顺序**：PROGRESS.md → 本文档 §2/§5/§6（架构与契约）→ 对应里程碑的域代码。
 
@@ -466,7 +467,7 @@ npm test               # vitest run
 - 测试入口 --core-check / --extended-check / --browser-check / --run-cases / --ui-check 在读取配置和创建工作区之前隔离 userData/sessionData。测试只扫描工作区技能。
 - --run-cases 仅对72个唯一ID做覆盖登记；MANUAL/BLOCKED不能替代PASS；无真实供应商凭据时不执行真实模型用例。
 - notes.list 查询/过滤/排序/计数/分页在SQL层组合；CJK全文匹配不足时提供注明来源的正文子串检索。
-- file 域禁止写 notes/，禁止读写 .whywork/.myremio；检查实际符号链接目标。资源协议仅可读取资源或临时图表，不能通过内部别名访问元数据。
+- file 域禁止写 notes/，禁止读写 .whywork/.whywork；检查实际符号链接目标。资源协议仅可读取资源或临时图表，不能通过内部别名访问元数据。
 - Agent 每次调用独立会话上下文；破坏操作、文件写入、MCP、网页eval、邮件发送及超过5次的写操作须确认；取消会撤销待确认请求。
 - MCP独立服务器工具名有稳定唯一后缀；工作区切换关闭连接；环境凭据加密，不继承任意环境密钥。MCP外部操作不能由本地rVault统一撤销，执行前须单独确认。
 - Office开文件先复制到 resources/office；保存检测输入版本冲突。XLSX支持值/公式、字体颜色、对齐、数字格式、边框、合并和行列尺寸写回；保留未修改日期/超链接。禁止增删/重排工作表；图表/透视表/宏兼容不承诺。DOCX保留基本Markdown结构和工作区图片，拒绝自动获取远程图片；PPTX以结构化页纲生成。

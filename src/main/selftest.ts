@@ -139,6 +139,12 @@ export async function runSelftest(): Promise<SmokeResult[]> {
     return `scanned=${r.scanned} created=${r.created} updated=${r.updated} removed=${r.removed}`
   })
 
+  await check('剪贴板菜单角色（⌘C/V 可用性回归）', async () => {
+    const { menuHasClipboardRoles } = await import('./menu')
+    if (!menuHasClipboardRoles()) throw new Error('应用菜单缺少 编辑/粘贴/复制/剪切/全选 角色：macOS 系统复制粘贴快捷键将失效')
+    return '菜单含中文编辑角色（撤销/剪切/复制/粘贴/全选）'
+  })
+
   await check('chat 会话与消息落库', async () => {
     const c = await sys('chat.create', {})
     const list = await sys('chat.list')

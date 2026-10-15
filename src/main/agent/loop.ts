@@ -78,7 +78,6 @@ export async function runAgent(opts: RunOptions): Promise<{ ok: boolean; error?:
         system += `\n\n# 当前绑定笔记\n标题：${d.note.title}\n\n${d.body.slice(0, 4000)}`
       }
     }
-
     const messages: ChatMessage[] = [
       { role: 'system', content: system },
       ...loadHistory(chatId)

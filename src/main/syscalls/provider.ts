@@ -7,12 +7,21 @@ import {
   deleteProvider,
   maskRow,
   getProvider,
+  decryptStoredKey,
   type ModelsConfig
 } from '../providers/store'
 import { startChatGPTLogin, chatGPTStatus, chatGPTLogout, cancelChatGPTLogin } from '../providers/chatgpt'
 import { PRESET_PROVIDERS } from '../providers/openai-compat'
 
 /** provider 域（DEVELOPMENT.md §6.11） */
+
+
+/** probe 用：读取已保存密钥的明文（仅在主进程内使用，不跨 IPC 返回） */
+function getStoredKeyForProbe(id: string): string {
+  const row = listProviderRows().find(r => r.id === id)
+  if (!row?.api_key_enc) return ''
+  return decryptStoredKey(Buffer.from(row.api_key_enc))
+}
 
 export function registerProviderDomain(): void {
   register('provider', {
@@ -60,6 +69,29 @@ export function registerProviderDomain(): void {
         return { ok: true }
       }
     },
+    probe: {
+      schema: z.object({
+        baseUrl: z.string().url(),
+        apiKey: z.string().optional(),
+        id: z.string().optional()
+      }),
+      handler: async (p: { baseUrl: string; apiKey?: string; id?: string }) => {
+        // 表单未填 Key 时回退到已保存密钥（仅主进程内解密使用，不跨 IPC 返回）
+        const key = p.apiKey || (p.id ? getStoredKeyForProbe(p.id) : '')
+        const started = Date.now()
+        const res = await fetch(`${p.baseUrl.replace(/\/$/, '')}/models`, {
+          headers: key ? { Authorization: `Bearer ${key}` } : {},
+          signal: AbortSignal.timeout(12_000)
+        }).catch((e: unknown) => {
+          throw new Error(`网络错误：${e instanceof Error ? e.message : String(e)}`)
+        })
+        const ms = Date.now() - started
+        if (!res.ok) throw new Error(`HTTP ${res.status}（${ms}ms）`)
+        const j = (await res.json()) as { data?: { id?: string }[]; models?: { id?: string }[] }
+        const list = (j.data ?? j.models ?? []).map(m => m.id ?? '').filter(Boolean)
+        return { ok: true, models: list, ms }
+      }
+    },
     test: {
       schema: z.object({ id: z.string().min(1) }),
       handler: async (p: { id: string }) => {
@@ -94,6 +126,21 @@ export function registerProviderDomain(): void {
     chatgpt_models:{handler:async(_p,ctx)=>{if(ctx.source!=='user')throw new Error('仅用户可刷新账号模型');const items=await modelCatalog(true);ctx.emit('notes.changed',{kind:'provider'});const p=items.find(p=>p.id==='chatgpt');if(!p?.ready||p.status.includes('失败'))throw new Error(p?.status??'请先登录');return{models:p.models.map(m=>m.id)}}},
     chatgpt_status: {
       handler: async () => chatGPTStatus()
+    },
+    chatgpt_candidates: {
+      handler: async () => {
+        const row = listProviderRows().find(r => r.id === 'chatgpt')
+        if (!row) throw new Error('尚未登录 ChatGPT')
+        const p = getProvider('chatgpt')
+        let discovered: string[] = []
+        try {
+          const cat = (await (p as { modelCatalog?: () => Promise<{ id: string }[]> }).modelCatalog?.()) ?? []
+          discovered = cat.map(m => m.id).filter(Boolean)
+        } catch { discovered = [] }
+        const config = row.models ? (JSON.parse(row.models) as ModelsConfig) : undefined
+        const selected = [...new Set([...(config?.fast ?? []), ...(config?.expert ?? [])])]
+        return { models: [...new Set([...selected, ...discovered])], selected }
+      }
     },
     chatgpt_logout: {
       handler: async (_p,ctx) => {
