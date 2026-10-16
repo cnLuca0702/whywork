@@ -33,7 +33,9 @@ export async function runCoreChecks():Promise<void> {
   const b=await sys<{noteId:string}>('notes.create',{title:'甲',body:'同名第二篇'})
   assert.notEqual(repo.getNote(a.noteId)!.relative_path,repo.getNote(b.noteId)!.relative_path)
   const deleted=listChanges().find(c=>c.op==='delete'&&c.kind==='note')!
-  assert(rollbackChange(deleted.change_id));assert.equal(repo.getNote(a.noteId)!.deleted_at,null)
+  assert.throws(()=>rollbackChange(deleted.change_id),'Occupied original path must not overwrite the newer note')
+  await sys('notes.restore',{noteId:a.noteId});assert.equal(repo.getNote(a.noteId)!.deleted_at,null)
+  assert.equal(repo.getNote(b.noteId)!.title,'甲')
   assert.equal(repo.listLinks(a.noteId).out.length,1)
   // Context propagation remains isolated across concurrent asynchronous tool calls.
   await Promise.all(['session-a','session-b'].map(chatId=>executionContext.run({...ctx,chatId},async()=>{
@@ -46,6 +48,14 @@ export async function runCoreChecks():Promise<void> {
   const creation=listChanges().find(c=>c.op==='create'&&c.path===repo.getNote(created.noteId)!.relative_path)!
   rollbackChange(creation.change_id);assert.equal(repo.getNote(created.noteId),undefined)
   assert.equal(repo.searchNotes('rollback_create_unique',10).length,0,'No ghost FTS row')
+  const edited=await sys<{noteId:string}>('notes.create',{title:'局部编辑回归',body:'alpha beta'})
+  const beforeEdit=listChanges().length
+  const editedResult=await invokeSys('notes.update',{noteId:edited.noteId,edits:[{oldText:'alpha',newText:'gamma'}]},{...ctx,source:'agent',chatId:'edit-regression'})
+  assert(editedResult.ok);assert.equal(repo.getNote(edited.noteId)?.note_source,'manual')
+  assert.equal((await sys<{body:string}>('notes.get',{noteId:edited.noteId})).body,'gamma beta')
+  assert(listChanges().length>beforeEdit)
+  assert.equal(rollbackChat('edit-regression'),1)
+  assert.equal((await sys<{body:string}>('notes.get',{noteId:edited.noteId})).body,'alpha beta')
   // Bad links and metadata access must fail before touching content.
   const external=fs.mkdtempSync(path.join(os.tmpdir(),'whywork-path-check-'))
   try {
@@ -64,12 +74,13 @@ export async function runCoreChecks():Promise<void> {
   // Confirmation requires a matching chat, and rejection never executes a tool.
   let asked=false
   const confirmed={...ctx,source:'agent' as const,chatId:'confirm',emit:(_topic:string,payload:unknown)=>{
+    if(_topic!=='chat.confirm')return
     const p=payload as {id:string;chatId:string};asked=true
     assert.throws(()=>respondConfirmation(p.id,'wrong-chat',true))
     respondConfirmation(p.id,p.chatId,true)
   }}
-  await requireToolConfirmation('notes.delete','{}',confirmed);assert(asked)
-  const rejected={...confirmed,emit:(_t:string,p:unknown)=>{const v=p as {id:string;chatId:string};respondConfirmation(v.id,v.chatId,false)}}
+  await requireToolConfirmation('notes.delete','{"noteId":"synthetic"}',confirmed);assert(asked)
+  const rejected={...confirmed,emit:(_t:string,p:unknown)=>{if(_t!=='chat.confirm')return;const v=p as {id:string;chatId:string};respondConfirmation(v.id,v.chatId,false)}}
   await assert.rejects(requireToolConfirmation('mcp__external__write','{}',rejected))
   const ac=new AbortController();ac.abort()
   await assert.rejects(requireToolConfirmation('file.write','{}',{...confirmed,signal:ac.signal}))

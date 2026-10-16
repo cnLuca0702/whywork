@@ -1,9 +1,10 @@
+import RecordingNoteActions from '../components/RecordingNoteActions'
+import NoteInsights from '../components/NoteInsights'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Dropdown, Input, Modal, Select, Spin, Tag, message } from 'antd'
 import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, MoreOutlined, ReadOutlined, StarFilled, StarOutlined } from '@ant-design/icons'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
-import katex from 'katex'
+import { renderMarkdown } from '../markdown/render'
+import {t} from '../i18n/zh'
 import { sys, useSysEvent } from '../api'
 import { useUiStore } from '../store/ui'
 import { useNotesStore } from '../store/notes'
@@ -33,87 +34,10 @@ interface NoteDetail {
   collections: { id: string; title: string }[]
 }
 
-const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
-// marked 扩展：[[wikilink]] 徽章 + $行内数学$ + $$块数学$$（KaTeX 渲染）
-const markedWithMath = (() => {
-  const m = marked
-  m.use({
-    extensions: [
-      {
-        name: 'wikilink',
-        level: 'inline',
-        start(src: string) {
-          return src.indexOf('[[')
-        },
-        tokenizer(src: string) {
-          const match = /^\[\[([^\[\]\n]+)\]\]/.exec(src)
-          if (match?.[1]) return { type: 'wikilink', raw: match[0], target: match[1].trim() }
-          return undefined
-        },
-        renderer(token) {
-          const t = token as unknown as { target: string }
-          return `<span class="wikilink-chip" data-target="${esc(t.target)}">${esc(t.target)}</span>`
-        }
-      },
-      {
-        name: 'mathblock',
-        level: 'block',
-        start(src: string) {
-          return src.indexOf('$$')
-        },
-        tokenizer(src: string) {
-          const match = /^\$\$([\s\S]+?)\$\$(?:\n+|$)/.exec(src)
-          if (match?.[1]) return { type: 'mathblock', raw: match[0], tex: match[1].trim() }
-          return undefined
-        },
-        renderer(token) {
-          const t = token as unknown as { tex: string }
-          try {
-            return katex.renderToString(t.tex, { displayMode: true, throwOnError: false })
-          } catch {
-            return `<pre>${esc(t.tex)}</pre>`
-          }
-        }
-      },
-      {
-        name: 'mathinline',
-        level: 'inline',
-        start(src: string) {
-          return src.indexOf('$')
-        },
-        tokenizer(src: string) {
-          const match = /^\$([^$\n]+?)\$/.exec(src)
-          if (match?.[1]) {
-            const c = match[1]
-            if (/\d/.test(c) && c.includes(' ')) return undefined
-            return { type: 'mathinline', raw: match[0], tex: c }
-          }
-          return undefined
-        },
-        renderer(token) {
-          const t = token as unknown as { tex: string }
-          try {
-            return katex.renderToString(t.tex, { displayMode: false, throwOnError: false })
-          } catch {
-            return esc(t.tex)
-          }
-        }
-      }
-    ]
-  })
-  return m
-})()
-
-/** markdown 预览：KaTeX + [[双链]] 渲染（XSS 净化） */
-function renderMarkdown(body: string): string {
-  const html = markedWithMath.parse(body, { async: false, gfm: true, breaks: true }) as string
-  return DOMPurify.sanitize(html, { ADD_ATTR: ['data-target'], ADD_URI_SAFE_ATTR: ['src'], ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|whywork-res|myremio-res):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i })
-}
-
 export default function NoteDetailView() {
   const { activeNoteId, setActiveNote } = useUiStore()
+  const citationSnippet=useUiStore(s=>s.citationSnippet)
+  const previewRef=useRef<HTMLDivElement>(null)
   const setStatus = useNotesStore((s) => s.setStatus)
   const remove = useNotesStore((s) => s.remove)
   const [detail, setDetail] = useState<NoteDetail | null>(null)
@@ -128,21 +52,32 @@ export default function NoteDetailView() {
 
   useEffect(() => {
     if (!activeNoteId || editing) return
+    let current=true
     setLoading(true)
     sys<NoteDetail>('notes.get', { noteId: activeNoteId })
       .then((d) => {
+        if(!current)return
         setDetail(d)
         bodyRef.current = d.body
         setTitleDraft(d.note.title)
       })
       .catch((e) => void message.error(String(e)))
-      .finally(() => setLoading(false))
+      .finally(() => {if(current)setLoading(false)})
     sys<{ items: { title: string }[] }>('notes.list', { limit: 100 })
       .then((r) => setTitles(r.items.map((n) => n.title)))
       .catch(() => undefined)
+    return()=>{current=false}
   }, [activeNoteId, editing])
 
   const html = useMemo(() => (detail ? renderMarkdown(detail.body) : ''), [detail])
+
+  useEffect(()=>{
+    if(!citationSnippet||!detail||detail.note.noteId!==activeNoteId)return
+    const needle=(citationSnippet.match(/⟦([^⟧]+)⟧/)?.[1]??citationSnippet).replace(/[⟦⟧…]/g,'').trim().slice(0,60)
+    for(const node of previewRef.current?.querySelectorAll('p,li,pre,td')??[]){
+      if(needle&&node.textContent?.includes(needle)){node.classList.add('ww-citation-hit');node.scrollIntoView({block:'center'});return()=>node.classList.remove('ww-citation-hit')}
+    }
+  },[citationSnippet,detail,activeNoteId,html])
 
   const onWikiClick = async (text: string) => {
     const target = detail?.links.out.find((l) => l.targetText === text)?.targetNoteId ?? null
@@ -177,6 +112,8 @@ export default function NoteDetailView() {
 
   return (
     <div className="ww-note-detail flex h-full flex-col">
+      {!editing&&<RecordingNoteActions key={activeNoteId} noteId={activeNoteId!}/>}
+      {!editing&&<NoteInsights key={activeNoteId} noteId={activeNoteId!}/>}
       <div className="ww-detail-toolbar">
         <Button type="text" size="small" icon={<ArrowLeftOutlined />} onClick={() => setActiveNote(null)}>
           返回
@@ -292,7 +229,8 @@ export default function NoteDetailView() {
           }}
         >
           {recordingUrl && <audio key={note.noteId} controls preload="metadata" src={recordingUrl} aria-label="已保存录音" className="mb-4 max-w-full" />}
-          <div dangerouslySetInnerHTML={{ __html: html }} />
+          {citationSnippet&&<blockquote><b>{t('chat.sourceSnippet')}</b><p>{citationSnippet}</p></blockquote>}
+          <div ref={previewRef} dangerouslySetInnerHTML={{ __html: html }} />
         </article>
 
         <aside className="ww-note-links w-48 shrink-0 overflow-y-auto border-l border-gray-200 px-4 py-3 text-sm dark:border-[#2a2a2a] lg:block">

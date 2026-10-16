@@ -104,7 +104,7 @@ export function createOpenAICompat(cfg: OpenAICompatConfig): ChatProvider {
       const handleChunk = (payload: string): void => {
         if (payload === '[DONE]') { completed = true; return }
         let j: {
-          choices?: { delta?: { content?: string | null; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[] }; finish_reason?: string | null }[]
+          choices?: { delta?: { content?: string | null; reasoning_content?: string; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[] }; finish_reason?: string | null }[]
           usage?: { prompt_tokens?: number; completion_tokens?: number }
         }
         try {
@@ -113,6 +113,7 @@ export function createOpenAICompat(cfg: OpenAICompatConfig): ChatProvider {
           return
         }
         const choice = j.choices?.[0]
+        if (choice?.delta?.reasoning_content) emit({ type: 'reasoning', delta: choice.delta.reasoning_content })
         if (choice?.delta?.content) emit({ type: 'text', delta: choice.delta.content })
         for (const tc of choice?.delta?.tool_calls ?? []) {
           const cur = toolAcc.get(tc.index) ?? { id: tc.id ?? `call_${tc.index}`, type: 'function' as const, function: { name: '', arguments: '' } }

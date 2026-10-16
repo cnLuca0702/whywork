@@ -1,3 +1,4 @@
+import ChatHistory from './ChatHistory'
 import brandIcon from '../../../../resources/icon.svg'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -117,8 +118,7 @@ export default function Sidebar() {
         <div className="ww-nav-label">知识库</div>
         {FILTERS.map(f=><button key={f.key} aria-current={view==='notes'&&filter===f.key&&!collectionId?'page':undefined} className={nav(view==='notes'&&filter===f.key&&!collectionId)} onClick={async()=>{if(await setView('notes'))setFilter(f.key)}}>{f.icon}<span>{f.label}</span></button>)}
         <CollectionsSection />
-        <div className="ww-nav-label">最近对话</div>
-        {chats.length===0 ? <p className="ww-nav-empty">开始提问后，对话会保存在这里</p> : chats.slice(0,20).map(c=><button key={c.chatId} className={nav(activeChatId===c.chatId)} title={c.title} onClick={async()=>{if(await setView('chat'))void openChat(c.chatId).catch(e=>void message.error(String(e)))}}><MessageOutlined/><span className="truncate">{c.title}</span></button>)}
+        <ChatHistory/>
       </nav>
       <div className="ww-sidebar-footer"><Button type="text" icon={<SettingOutlined/>} onClick={()=>void setView(view==='settings'?'chat':'settings')}>设置</Button><span>BYOK</span></div>
     </aside>

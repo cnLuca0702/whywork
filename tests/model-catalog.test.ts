@@ -12,10 +12,11 @@ describe('model catalog is evidence-based and never mutates provider configurati
   expect(parseChatGPTCatalog({models:[{slug:'b',display_name:'Visible B',visibility:'list'},{slug:'hidden',visibility:'hidden'},{slug:'a',visibility:'list'},{slug:'b',visibility:'list'}]})).toEqual([{id:'b',label:'Visible B'},{id:'a',label:'a'}])
   expect(parseChatGPTCatalog({data:[{id:'wrong-shape'}]})).toEqual([])
  })
- it('keeps duplicate names and model IDs distinct by provider, with configured fallback provenance',async()=>{
+ it('keeps providers distinct and only allows explicitly configured models',async()=>{
   mock.rows=[row('a'),row('b')];const r=await modelCatalog()
-  expect(r.map(p=>p.id)).toEqual(['a','b']);expect(r[0]?.models).toEqual([{id:'shared',label:'shared',source:'discovered'},{id:'configured',label:'configured',source:'configured'}])
-  await expect(validateSelection({providerId:'b',model:'shared'})).resolves.toBeUndefined()
+  expect(r.map(p=>p.id)).toEqual(['a','b']);expect(r[0]?.models).toEqual([{id:'configured',label:'configured',source:'configured'}])
+  await expect(validateSelection({providerId:'b',model:'configured'})).resolves.toBeUndefined()
+  await expect(validateSelection({providerId:'b',model:'shared'})).rejects.toThrow('不在')
   await expect(validateSelection({providerId:'b',model:'invented'})).rejects.toThrow('不在')
  })
  it('never discovers disabled or credential-less providers',async()=>{
@@ -26,9 +27,10 @@ describe('model catalog is evidence-based and never mutates provider configurati
   mock.rows=[row('a')];mock.list.mockRejectedValue(new Error('secret must not be exposed'))
   const [p]=await modelCatalog();expect(p?.status).toContain('读取失败');expect(JSON.stringify(p)).not.toContain('secret');expect(p?.models[0]?.source).toBe('configured')
  })
- it('uses successful OAuth catalog as authoritative and preserves labels',async()=>{
-  mock.rows=[row('oauth',{kind:'chatgpt'})];const [p]=await modelCatalog();expect(p?.models).toEqual([{id:'account-slug',label:'Account model',source:'discovered'}])
-  await expect(validateSelection({providerId:'oauth',model:'configured'})).rejects.toThrow('不在')
+ it('does not automatically enable discovered OAuth models',async()=>{
+  mock.rows=[row('oauth',{kind:'chatgpt'})];const [p]=await modelCatalog();expect(p?.models).toEqual([{id:'configured',label:'configured',source:'configured'}])
+  await expect(validateSelection({providerId:'oauth',model:'configured'})).resolves.toBeUndefined()
+  await expect(validateSelection({providerId:'oauth',model:'account-slug'})).rejects.toThrow('不在')
  })
  it('refresh removes disappeared discovered models and configuration changes invalidate cached choices',async()=>{
   mock.rows=[row('a')];await modelCatalog();mock.list.mockResolvedValue(['new']);await modelCatalog(true)

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
@@ -24,6 +25,20 @@ function assertInside(rel: string): void {
 
 export function registerFileDomain(): void {
   register('file', {
+    read_document:{schema:z.object({path:z.string().min(1)}),handler:async(p:{path:string})=>{
+      const abs=safeResolve(p.path),stat=fs.statSync(abs)
+      if(!['.pdf','.docx','.pptx','.xlsx'].includes(path.extname(abs).toLowerCase()))throw new Error('只支持PDF/DOCX/PPTX/XLSX')
+      if(!stat.isFile()||stat.size>50*1024*1024)throw new Error('文档超过50MB或不是文件')
+      const key=crypto.createHash('sha256').update(JSON.stringify([abs,stat.mtimeMs,stat.size])).digest('hex')
+      const cache=resolveWorkspacePath('.whywork/tmp/document-'+key+'.md',true)
+      if(fs.existsSync(cache))return {content:fs.readFileSync(cache,'utf8'),cached:true}
+      const {importFile}=await import('../services/importer')
+      const result=await importFile(abs),raw=result.map(r=>`# ${r.title}\n\n${r.markdown}`).join('\n\n')
+      if(fs.statSync(safeResolve(p.path)).mtimeMs!==stat.mtimeMs)throw new Error('文档读取期间已变化，请重试')
+      const content=raw.slice(0,100_000)+(raw.length>100_000?'\n（内容已截断）':'')
+      fs.mkdirSync(path.dirname(cache),{recursive:true});fs.writeFileSync(cache,content)
+      return {content,cached:false,truncated:raw.length>100_000}
+    }},
     read: {
       schema: z.object({ path: z.string().min(1) }),
       handler: async (p: { path: string }) => {
@@ -40,9 +55,11 @@ export function registerFileDomain(): void {
         assertInside(p.path)
         assertNoteWrite(p.path)
         const exists = fs.existsSync(safeResolve(p.path))
+        const abs = safeResolve(p.path),missing:string[]=[]
+        let parent=path.dirname(abs)
+        while(!fs.existsSync(parent)){missing.unshift(parent);parent=path.dirname(parent)}
+        for(const dir of missing){snapshotBeforeWrite(toRel(dir),'create',{detail:{directory:true}});fs.mkdirSync(dir)}
         snapshotBeforeWrite(p.path, exists ? 'modify' : 'create')
-        const abs = safeResolve(p.path)
-        fs.mkdirSync(path.dirname(abs), { recursive: true })
         fs.writeFileSync(abs, p.content)
         return { ok: true }
       }

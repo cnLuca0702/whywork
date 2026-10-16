@@ -1,11 +1,13 @@
+import {mailAttachments,mailError} from '../services/mail-attachments'
 import crypto from 'node:crypto'
 import {z} from 'zod'
-import {register,type SysContext} from './registry'
+import {register,invokeSys,type SysContext} from './registry'
 import {getDb} from '../db/client'
 import {createNote} from '../db/repos/notes'
 import {encryptSecret,decryptSecret} from '../security/secrets'
 interface MailAccount {id:string;name:string;host:string;port:number;user:string;password_enc:string;smtp_host:string|null;smtp_port:number}
-function tables():void{getDb().exec(`CREATE TABLE IF NOT EXISTS mail_accounts(id TEXT PRIMARY KEY,name TEXT NOT NULL,host TEXT NOT NULL,port INTEGER NOT NULL,user TEXT NOT NULL,password_enc TEXT NOT NULL,smtp_host TEXT,smtp_port INTEGER NOT NULL DEFAULT 465);
+function tables():void{getDb().exec(`CREATE TABLE IF NOT EXISTS mail_failed(id TEXT PRIMARY KEY,account_id TEXT NOT NULL,payload TEXT NOT NULL,error TEXT NOT NULL,created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS mail_accounts(id TEXT PRIMARY KEY,name TEXT NOT NULL,host TEXT NOT NULL,port INTEGER NOT NULL,user TEXT NOT NULL,password_enc TEXT NOT NULL,smtp_host TEXT,smtp_port INTEGER NOT NULL DEFAULT 465);
  CREATE TABLE IF NOT EXISTS mail_imports(account_id TEXT NOT NULL,mailbox TEXT NOT NULL,validity TEXT NOT NULL,uid INTEGER NOT NULL,note_id TEXT NOT NULL,PRIMARY KEY(account_id,mailbox,validity,uid));`)}
 function account(id:string):MailAccount{tables();const row=getDb().prepare('SELECT * FROM mail_accounts WHERE id=?').get(id) as MailAccount|undefined;if(!row)throw new Error('邮件账户不存在');return row}
 export async function importMailSource(source:Buffer,ctx:Pick<SysContext,'emit'>):Promise<{noteId:string}> {
@@ -16,6 +18,7 @@ export async function importMailSource(source:Buffer,ctx:Pick<SysContext,'emit'>
 }
 export function registerMailDomain():void {
   register('mail',{
+    failed_list:{handler:async(_p,ctx)=>{const r=await invokeSys('mail.failed',{},ctx);if(!r.ok)throw new Error(r.error.message);return r.data}},
     accounts:{handler:async()=>{tables();return{items:getDb().prepare('SELECT id,name,host,port,user,smtp_host,smtp_port FROM mail_accounts ORDER BY name').all()}}},
     save_account:{schema:z.object({id:z.string().optional(),name:z.string(),host:z.string(),port:z.number().int().default(993),user:z.string(),password:z.string().optional(),smtpHost:z.string().optional(),smtpPort:z.number().int().default(465)}),handler:async(p:{id?:string;name:string;host:string;port:number;user:string;password?:string;smtpHost?:string;smtpPort:number})=>{
       tables();const id=p.id??crypto.randomUUID(),old=getDb().prepare('SELECT password_enc FROM mail_accounts WHERE id=?').get(id) as {password_enc:string}|undefined
@@ -23,7 +26,13 @@ export function registerMailDomain():void {
       getDb().prepare('INSERT INTO mail_accounts(id,name,host,port,user,password_enc,smtp_host,smtp_port) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,host=excluded.host,port=excluded.port,user=excluded.user,password_enc=excluded.password_enc,smtp_host=excluded.smtp_host,smtp_port=excluded.smtp_port').run(id,p.name,p.host,p.port,p.user,encrypted,p.smtpHost??null,p.smtpPort)
       return{id}
     }},
-    remove_account:{schema:z.object({id:z.string()}),handler:async(p:{id:string})=>{tables();getDb().prepare('DELETE FROM mail_accounts WHERE id=?').run(p.id);getDb().prepare('DELETE FROM mail_imports WHERE account_id=?').run(p.id);return{ok:true}}},
+    failed:{handler:async()=>{tables();return {items:(getDb().prepare('SELECT * FROM mail_failed ORDER BY created_at DESC LIMIT 100').all() as {payload:string}[]).map(r=>({...r,payload:JSON.parse(r.payload)}))}}},
+    retry:{schema:z.object({id:z.string(),confirmed:z.boolean().default(false)}),handler:async(p:{id:string;confirmed:boolean},ctx)=>{if(!p.confirmed)throw new Error('重试发送需要用户再次确认');tables();const row=getDb().prepare('SELECT payload FROM mail_failed WHERE id=?').get(p.id) as {payload:string}|undefined;if(!row)throw new Error('失败邮件不存在');const result=await invokeSys('mail.send',{...JSON.parse(row.payload),confirmed:true},ctx);if(!result.ok)throw new Error(result.error.message);getDb().prepare('DELETE FROM mail_failed WHERE id=?').run(p.id);return result.data}},
+    remove_account:{schema:z.object({id:z.string(),removeNotes:z.boolean().default(false)}),handler:async(p:{id:string;removeNotes:boolean},ctx)=>{
+      tables();if(p.removeNotes){const ids=(getDb().prepare('SELECT DISTINCT note_id FROM mail_imports WHERE account_id=?').all(p.id) as {note_id:string}[]).map(r=>r.note_id)
+        for(const noteId of ids){const r=await invokeSys('notes.delete',{noteId},ctx);if(!r.ok)throw new Error('邮件笔记移入回收站失败，账户尚未移除：'+r.error.message)}
+      }getDb().transaction(()=>{getDb().prepare('DELETE FROM mail_accounts WHERE id=?').run(p.id);getDb().prepare('DELETE FROM mail_imports WHERE account_id=?').run(p.id)})();return{ok:true}
+    }},
     sync:{schema:z.object({id:z.string(),mailbox:z.string().default('INBOX'),limit:z.number().int().min(1).max(200).default(50)}),handler:async(p:{id:string;mailbox:string;limit:number},ctx)=>{
       const row=account(p.id),workspace=(await import('./app')).getWorkspacePath()
       const {ImapFlow}=await import('imapflow'),client=new ImapFlow({host:row.host,port:row.port,secure:true,auth:{user:row.user,pass:decryptSecret(row.password_enc)},logger:false,socketTimeout:30000,connectionTimeout:15000})
@@ -45,11 +54,12 @@ export function registerMailDomain():void {
       }finally{await client.logout().catch(()=>undefined)}
       return{imported}
     }},
-    send:{schema:z.object({id:z.string(),to:z.string().email(),subject:z.string().max(300),text:z.string().max(100000),confirmed:z.boolean().default(false)}),handler:async(p:{id:string;to:string;subject:string;text:string;confirmed:boolean})=>{
+    send:{schema:z.object({id:z.string(),to:z.string().email(),cc:z.array(z.email()).max(50).optional(),bcc:z.array(z.email()).max(50).optional(),attachments:z.array(z.object({path:z.string().min(1)})).max(30).default([]),subject:z.string().max(300),text:z.string().max(100000),confirmed:z.boolean().default(false)}),handler:async(p:{id:string;to:string;cc?:string[];bcc?:string[];attachments:{path:string}[];subject:string;text:string;confirmed:boolean})=>{
       if(!p.confirmed)throw new Error('发送邮件需要用户确认收件人、主题和正文')
+      const attachments=mailAttachments(p.attachments)
       const row=account(p.id);if(!row.smtp_host)throw new Error('未配置 SMTP')
       const nodemailer=await import('nodemailer'),transport=nodemailer.default.createTransport({host:row.smtp_host,port:row.smtp_port,secure:row.smtp_port===465,requireTLS:true,auth:{user:row.user,pass:decryptSecret(row.password_enc)},connectionTimeout:15000,socketTimeout:30000})
-      try{const r=await transport.sendMail({from:row.user,to:p.to,subject:p.subject,text:p.text});return{messageId:r.messageId,accepted:r.accepted}}finally{transport.close()}
+      try{const r=await transport.sendMail({from:row.user,to:p.to,cc:p.cc,bcc:p.bcc,subject:p.subject,text:p.text,attachments});return{messageId:r.messageId,accepted:r.accepted}}catch(e){const reason=mailError(e);getDb().prepare('INSERT INTO mail_failed(id,account_id,payload,error,created_at) VALUES(?,?,?,?,?)').run(crypto.randomUUID(),p.id,JSON.stringify({...p,confirmed:false}),reason,Date.now());throw new Error(reason)}finally{transport.close()}
     }}
   })
 }

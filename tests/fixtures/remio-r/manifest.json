@@ -1,0 +1,123 @@
+{
+  "dataset": "TEST_REMIO_R",
+  "synthetic": true,
+  "generator": "tests/fixtures/remio-r/generate.cjs",
+  "product_execution": "NOT_RUN",
+  "files": [
+    {
+      "path": "importable/media/dictionary.txt",
+      "bytes": 29,
+      "sha256": "e5b42c9f45fc9c45f35534199f4030d7e8903aea67fe9b607f84677b503e54a9"
+    },
+    {
+      "path": "importable/notes/cite-01_北辰计划.md",
+      "bytes": 166,
+      "sha256": "12db9ba2b2ea1d562eb62f021595751eea87d9890c28a0a64fd242f53d477423"
+    },
+    {
+      "path": "importable/notes/cite-02_北辰风险.md",
+      "bytes": 165,
+      "sha256": "f6ada1fbed21b284d6cf6ecbc7923f96cfa3611930cd65c6856786222f51c449"
+    },
+    {
+      "path": "importable/notes/cite-03_南岭计划.md",
+      "bytes": 116,
+      "sha256": "83f48d8a4a78e99525ef25b2afba42b374fd8022224886ed30f9d9cd6132f695"
+    },
+    {
+      "path": "importable/notes/edit-target.md",
+      "bytes": 1358,
+      "sha256": "12e2460418d8cfe2b60ae1a07a6cea7135aff6bb1913a39a249b076c42adc56c"
+    },
+    {
+      "path": "importable/notes/long-ref-1.md",
+      "bytes": 29904,
+      "sha256": "ca5ec31eae13ee86b1149c78e34cb65176f3d92b5c21af4a14747fade92b5b15"
+    },
+    {
+      "path": "importable/notes/long-ref-2.md",
+      "bytes": 29904,
+      "sha256": "79110bf21033cc5e22aad7e1d1220c8c03876d0431f5523191e044a12dbd9a82"
+    },
+    {
+      "path": "importable/notes/long-ref-3.md",
+      "bytes": 29904,
+      "sha256": "5e61b4765e3da567c97c5bf55701c4b147c9a07d5af15fc53a723cbb37d8a3ed"
+    },
+    {
+      "path": "importable/notes/long-ref-4.md",
+      "bytes": 29904,
+      "sha256": "03a3fff80b07fed0f0ecb364fc42f9ec0763619768f7fd2b4e4a82453d7f2504"
+    },
+    {
+      "path": "importable/notes/rel-01_量子退火.md",
+      "bytes": 70,
+      "sha256": "b4eb2cba332ba8ebe7228daf6f9013bed7abb7e251d79d0f90a13b0f9b709225"
+    },
+    {
+      "path": "importable/notes/rel-02_调度优化实践.md",
+      "bytes": 76,
+      "sha256": "9aac9496ee904f15d61eaf0fd268264f9c32c1543b64e71bc8bb1853fad949db"
+    },
+    {
+      "path": "importable/notes/rel-03_无关.md",
+      "bytes": 37,
+      "sha256": "fd1117c91cb9c105b6fc184e13554fd57100eb1752128a9917ec61fb3a655a4c"
+    },
+    {
+      "path": "importable/office/ppt-outline.json",
+      "bytes": 428,
+      "sha256": "2da9e32fb36e735096e612502ae3454d1cc72830aec569ed9de6ef8789a56fcd"
+    },
+    {
+      "path": "importable/office/rt-sheets.xlsx",
+      "bytes": 27792,
+      "sha256": "18da02d60e8f100f5907c242efa7df96a88454ebf8a98485ed534bef3696fb32"
+    },
+    {
+      "path": "importable/pdf/scanned.pdf",
+      "bytes": 52602,
+      "sha256": "a8b841d6994c045385c02de4bb30d1eb3ba4c8d5bdce0734a8ca431671621895"
+    },
+    {
+      "path": "importable/skills/bad-no-frontmatter/SKILL.md",
+      "bytes": 49,
+      "sha256": "96ad3859dce05dc7bda5d25c00d709b1cc5d2f8a232e63da7519a8b11dababae"
+    },
+    {
+      "path": "importable/skills/dup-alpha/SKILL.md",
+      "bytes": 91,
+      "sha256": "5d5681000be05a20a748cbd06dcff1096967598f24902a46bb2b4dcde3ce0aa1"
+    },
+    {
+      "path": "importable/skills/rt-skill-alpha/SKILL.md",
+      "bytes": 98,
+      "sha256": "c0ebf582b67e665f6261ba9ea3e7e8b5d48cf9faa56f5217c4be6d4b241b95f5"
+    },
+    {
+      "path": "importable/skills/rt-skill-beta/SKILL.md",
+      "bytes": 95,
+      "sha256": "ef242daabd9eb9a5325cfde5db2ec38e0742b7332a7ce6f316f5b148a1241279"
+    },
+    {
+      "path": "importable/skills/rt-skill-delta/SKILL.md",
+      "bytes": 98,
+      "sha256": "c762796ddbb95638e550edd9e0230fb5c1b7f2e0886d4526eefe26aeeb5ae12e"
+    },
+    {
+      "path": "importable/skills/rt-skill-gamma/SKILL.md",
+      "bytes": 98,
+      "sha256": "4242c27ac8ddf5f4e5f4691791c0944fb78b0af20b44930a843b248bc911dc1b"
+    },
+    {
+      "path": "oracle/edit-cases.json",
+      "bytes": 2539,
+      "sha256": "b24642f5918b811506f58881799d9bcdbf09ee4ae12b77553dd1da687b1e868a"
+    },
+    {
+      "path": "oracle/expected.json",
+      "bytes": 1848,
+      "sha256": "1bfa29dc2cbce2447d6497aeb535cdb5e18c09ebb4a3c2e01f102323bd0bdfdb"
+    }
+  ]
+}

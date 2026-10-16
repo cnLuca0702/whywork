@@ -1,0 +1,127 @@
+{
+  "note": "base 为 importable/notes/edit-target.md 的正文（去掉首行标题后由产品存储）。index 为 1 起计；实现若输出 edits[0] 风格也接受",
+  "cases": [
+    {
+      "id": "E01",
+      "edits": [
+        {
+          "oldText": "EDIT-L001",
+          "newText": "EDIT-L001-NEW"
+        },
+        {
+          "oldText": "EDIT-L040",
+          "newText": "EDIT-L040-NEW"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "contains": [
+          "EDIT-L001-NEW",
+          "EDIT-L040-NEW"
+        ],
+        "notContains": []
+      }
+    },
+    {
+      "id": "E02",
+      "edits": [
+        {
+          "oldText": "重复行 DUP-LINE",
+          "newText": "x"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "kind": "multiple",
+        "index": 1,
+        "keywords": [
+          "多次"
+        ]
+      }
+    },
+    {
+      "id": "E03",
+      "edits": [
+        {
+          "oldText": "第1节：内容行",
+          "newText": "a"
+        },
+        {
+          "oldText": "内容行 EDIT-L001",
+          "newText": "b"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "kind": "overlap",
+        "index": 2,
+        "keywords": [
+          "重叠"
+        ]
+      }
+    },
+    {
+      "id": "E04",
+      "edits": [
+        {
+          "oldText": "EDIT-L001",
+          "newText": "ok"
+        },
+        {
+          "oldText": "不存在的文本 NOPE",
+          "newText": "x"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "kind": "not_found",
+        "index": 2,
+        "keywords": [
+          "未找到"
+        ]
+      }
+    },
+    {
+      "id": "E05",
+      "edits": [
+        {
+          "oldText": "带首尾空白的行 FUZZY-TARGET",
+          "newText": "已模糊匹配 FUZZY-DONE"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "contains": [
+          "FUZZY-DONE"
+        ],
+        "notContains": [
+          "FUZZY-TARGET"
+        ]
+      }
+    },
+    {
+      "id": "E06",
+      "edits": [
+        {
+          "oldText": "EDIT-L002",
+          "newText": "EDIT-L003"
+        },
+        {
+          "oldText": "EDIT-L003",
+          "newText": "EDIT-L003-B"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "contains": [
+          "EDIT-L003-B"
+        ],
+        "note": "按原文匹配而不是逐条累积：第 2 条只替换原有的 L003，第 1 条产出的 L003 保留",
+        "countOf": {
+          "EDIT-L003": 1,
+          "EDIT-L003-B": 1
+        }
+      }
+    }
+  ]
+}

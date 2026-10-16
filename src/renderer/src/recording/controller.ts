@@ -1,14 +1,16 @@
 export type RecordingMode='microphone'|'system'|'synthetic'
 export type RecordingPhase='idle'|'requesting'|'recording'|'paused'|'stopping'|'ready'|'saving'|'saved'|'error'
-export interface RecordingState{phase:RecordingPhase;mode:RecordingMode;durationMs:number;blob:Blob|null;error:string;id:string;noteId?:string;path?:string}
+export interface RecordingState{phase:RecordingPhase;mode:RecordingMode;durationMs:number;blob:Blob|null;error:string;id:string;noteId?:string;path?:string;segmentOf?:string;segmentIndex?:number}
 export interface AudioSource{stream:MediaStream;release?:()=>void}
 export interface RecorderLike {
  state:'inactive'|'recording'|'paused';mimeType:string
  ondataavailable:((e:BlobEvent)=>void)|null;onstop:((e:Event)=>void)|null;onerror:((e:ErrorEvent)=>void)|null
- start:()=>void;pause:()=>void;resume:()=>void;stop:()=>void
+ start:(timeslice?:number)=>void;pause:()=>void;resume:()=>void;stop:()=>void
 }
 export class RecordingController{
  state:RecordingState={phase:'idle',mode:'microphone',durationMs:0,blob:null,error:'',id:''}
+ private segmentSaver:((state:RecordingState)=>Promise<{noteId:string;path:string}>)|null=null;private segmentLimit=48*1024*1024;private splitting=false;private bytes=0
+ setSegmentSaver(saver:(state:RecordingState)=>Promise<{noteId:string;path:string}>,limit=48*1024*1024){this.segmentSaver=saver;this.segmentLimit=limit}
  private recorder:RecorderLike|null=null;private source:AudioSource|null=null;private chunks:Blob[]=[];private epoch=0;private elapsed=0;private began=0;private listeners=new Set<(s:RecordingState)=>void>()
  constructor(private create:(stream:MediaStream)=>RecorderLike,private now=()=>performance.now()){}
  subscribe(fn:(s:RecordingState)=>void){this.listeners.add(fn);return()=>{this.listeners.delete(fn)}}
@@ -16,26 +18,35 @@ export class RecordingController{
  duration(){return this.elapsed+(this.state.phase==='recording'?this.now()-this.began:0)}
  private freeze(){if(this.state.phase==='recording')this.elapsed+=this.now()-this.began}
  private release(){const source=this.source;this.source=null;if(source){for(const t of source.stream.getTracks()){t.onended=null;t.stop()}source.release?.()}}
- async start(mode:RecordingMode,acquire:()=>Promise<AudioSource>){
+ async start(mode:RecordingMode,acquire:()=>Promise<AudioSource>,segment?:{segmentOf:string;segmentIndex:number}){
   if(!['idle','saved','error'].includes(this.state.phase))return
-  const epoch=++this.epoch;this.elapsed=0;this.chunks=[]
-  this.set({phase:'requesting',mode,durationMs:0,blob:null,error:'',id:crypto.randomUUID(),noteId:undefined,path:undefined})
+  const epoch=++this.epoch;this.elapsed=0;this.chunks=[];this.bytes=0;this.splitting=false
+  this.set({phase:'requesting',mode,durationMs:0,blob:null,error:'',id:crypto.randomUUID(),noteId:undefined,path:undefined,segmentOf:segment?.segmentOf??crypto.randomUUID(),segmentIndex:segment?.segmentIndex??1})
   try{
    const source=await acquire()
    if(epoch!==this.epoch){source.stream.getTracks().forEach(t=>t.stop());source.release?.();return}
    this.source=source
    if(!source.stream.getAudioTracks().length)throw new Error('没有音轨，录音未开始')
    const rec=this.create(new MediaStream(source.stream.getAudioTracks()));this.recorder=rec
-   rec.ondataavailable=e=>{if(epoch===this.epoch&&e.data.size)this.chunks.push(e.data)}
+   rec.ondataavailable=e=>{if(epoch!==this.epoch||!e.data.size)return;this.chunks.push(e.data);this.bytes+=e.data.size;if(this.segmentSaver&&this.bytes>=this.segmentLimit&&this.state.phase==='recording'){this.splitting=true;this.finish()}}
    rec.onerror=()=>{if(epoch===this.epoch)this.fail('录音设备或编码器异常，未保存文件')}
    rec.onstop=()=>{
     if(epoch!==this.epoch)return
     this.freeze();const blob=new Blob(this.chunks,{type:rec.mimeType||'audio/webm'})
-    this.set({phase:blob.size?'ready':'error',durationMs:this.elapsed,blob:blob.size?blob:null,error:blob.size?'':'未取得音频数据，请重新录制'})
-    this.recorder=null;this.release();this.chunks=[]
+    const valid=blob.size>0&&this.elapsed>=1000
+    this.set({phase:valid?'ready':'error',durationMs:this.elapsed,blob:valid?blob:null,error:valid?'':this.elapsed<1000?'录音过短，请至少录制1秒':'未取得音频数据，请重新录制'})
+    this.recorder=null;this.chunks=[]
+    if(this.splitting&&valid&&this.segmentSaver){
+      const held=this.source;this.source=null
+      const segment={segmentOf:this.state.segmentOf!,segmentIndex:this.state.segmentIndex!+1}
+      void this.save(this.segmentSaver).then(async()=>{
+        if(epoch===this.epoch&&this.state.phase==='saved'&&held)await this.start(mode,async()=>held,segment)
+        else if(held){held.stream.getTracks().forEach(t=>t.stop());held.release?.()}
+      })
+    }else this.release()
    }
    for(const t of source.stream.getTracks())t.onended=()=>{if(epoch===this.epoch)this.finish()}
-   rec.start();this.began=this.now();this.set({phase:'recording'})
+   rec.start(1000);this.began=this.now();this.set({phase:'recording'})
   }catch(e){
     if(epoch!==this.epoch)return
     const name=e instanceof DOMException?e.name:''
@@ -57,5 +68,5 @@ export class RecordingController{
   const snapshot=this.state;this.set({phase:'saving',error:''})
   try{const result=await saver(snapshot);this.set({phase:'saved',...result})}catch(e){this.set({phase:'ready',error:`保存失败，可重试或取消：${String(e)}`})}
  }
- dispose(){this.listeners.clear();this.cancel()}
+ dispose(){this.listeners.clear();if(this.state.phase==='saving'){this.epoch++;this.release()}else this.cancel()}
 }

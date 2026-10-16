@@ -7,7 +7,7 @@ export async function stopPairing():Promise<void> {
   const s=server;server=null;token='';expires=0
   if(s)await new Promise<void>(resolve=>{s.close(()=>resolve());s.closeAllConnections()})
 }
-export async function startPairing():Promise<{url:string;qr:string;expires:number;scope:string}> {
+export async function startPairing(emit?:(topic:string,payload:unknown)=>void):Promise<{url:string;qr:string;expires:number;scope:string}> {
   await stopPairing();token=crypto.randomBytes(32).toString('hex');expires=Date.now()+5*60000
   const s=http.createServer(async(req,res)=>{
     res.setHeader('Content-Type','application/json; charset=utf-8')
@@ -22,7 +22,7 @@ export async function startPairing():Promise<{url:string;qr:string;expires:numbe
       if(!input.name||input.name.length>100||!input.pubkey||input.pubkey.length<32||input.pubkey.length>4096){fail(400,'invalid device');return}
       const id=crypto.randomUUID()
       getDb().prepare('INSERT INTO devices(device_id,name,platform,pubkey,paired_at,last_seen) VALUES(?,?,?,?,?,?)').run(id,input.name,(input.platform??'unknown').slice(0,30),input.pubkey,Date.now(),Date.now())
-      token='';res.end(JSON.stringify({deviceId:id,paired:true,sync:false}))
+      token='';emit?.('pair.bound',{deviceId:id,name:input.name});res.end(JSON.stringify({deviceId:id,paired:true,sync:false}))
     }catch{fail(400,'invalid request')}
   })
   await new Promise<void>((resolve,reject)=>{s.once('error',reject);s.listen(0,'127.0.0.1',()=>{s.off('error',reject);resolve()})})

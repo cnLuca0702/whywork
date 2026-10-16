@@ -50,6 +50,7 @@ export function createAnthropic(cfg:OpenAICompatConfig):ChatProvider {
         if(j.type==='content_block_start'&&j.content_block?.type==='tool_use')
           tools.set(j.index,{id:j.content_block.id,name:j.content_block.name,json:'',input:j.content_block.input})
         if(j.type==='content_block_delta') {
+          if(j.delta?.type==='thinking_delta')emit({type:'reasoning',delta:j.delta.thinking})
           if(j.delta?.type==='text_delta')emit({type:'text',delta:j.delta.text})
           if(j.delta?.type==='input_json_delta') {const t=tools.get(j.index);if(t)t.json+=j.delta.partial_json}
         }

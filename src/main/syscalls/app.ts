@@ -1,4 +1,5 @@
-import { app, shell } from 'electron'
+import {resolveWorkspacePath} from '../security/paths'
+import { app, shell, dialog } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import { z } from 'zod'
@@ -90,6 +91,11 @@ export function migrateFromMyRemio(): void {
 
 export function registerAppDomain(): void {
   register('app', {
+    pick_files:{schema:z.object({filters:z.array(z.object({name:z.string(),extensions:z.array(z.string())})).optional()}),handler:async(p:{filters?:{name:string;extensions:string[]}[]},ctx)=>{
+      const win=ctx.win();if(ctx.source!=='user'||!win)throw new Error('文件选择必须由用户在窗口发起')
+      const r=await dialog.showOpenDialog(win,{properties:['openFile','multiSelections'],filters:p.filters})
+      return {canceled:r.canceled,paths:r.filePaths}
+    }},
     ping: {
       handler: async () => ({ pong: true, version: app.getVersion(), ts: Date.now() })
     },
@@ -160,6 +166,7 @@ export function registerAppDomain(): void {
               if (row) {
                 getDb().prepare('UPDATE notes SET resource_dir=? WHERE note_id=?').run(resourceDirRel, note.note_id)
               }
+              if(r.scannedPdf){const {attachScannedPdf}=await import('../services/ocr-index');attachScannedPdf(note.note_id,r.scannedPdf)}
               noteIds.push(note.note_id)
             }
           } catch (e) {
@@ -201,7 +208,7 @@ export function registerAppDomain(): void {
     reveal_in_finder: {
       schema: z.object({ path: z.string().min(1) }),
       handler: async (payload: { path: string }) => {
-        await shell.openPath(path.join(getWorkspacePath(), payload.path))
+        shell.showItemInFolder(resolveWorkspacePath(payload.path))
         return { ok: true }
       }
     }

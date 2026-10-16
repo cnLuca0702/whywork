@@ -1,3 +1,4 @@
+import {safeStorage,app} from 'electron'
 import assert from 'node:assert/strict'
 import http from 'node:http'
 import {invokeSys,type SysContext} from './syscalls/registry'
@@ -8,6 +9,14 @@ import {chatSelection,type CatalogProvider,type ModelSelection} from './provider
 
 /** All transport and credentials in this check are synthetic, on loopback only. */
 export async function setupModelFixture(){
+  if(!safeStorage.isEncryptionAvailable()){
+    if(!app.getPath('userData').includes('whywork-isolated-'))throw new Error('Synthetic model fixture requires isolated profile')
+    safeStorage.isEncryptionAvailable=()=>true
+    safeStorage.encryptString=value=>Buffer.from('model-synthetic:'+value)
+    safeStorage.decryptString=value=>Buffer.from(value).toString().replace(/^model-synthetic:/,'')
+    console.log('[MODEL-CHECK] Synthetic-only secret store substitute; OS keyring not tested')
+  }
+
   const requests:{provider:string;model:string}[]=[]
   let release:(()=>void)|undefined
   let started:(()=>void)|undefined
@@ -26,7 +35,7 @@ export async function setupModelFixture(){
   })
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve))
   const port=(server.address() as {port:number}).port
-  for(const id of ['alpha','beta','manual'])upsertProvider({id:'openai-compat:'+id,kind:'openai-compat',name:id==='manual'?'Manual endpoint':'Same provider name',baseUrl:`http://127.0.0.1:${port}/${id}/v1`,apiKey:'synthetic-only',models:{fast:['configured-only'],expert:[],defaultFast:'configured-only'}})
+  for(const id of ['alpha','beta','manual'])upsertProvider({id:'openai-compat:'+id,kind:'openai-compat',name:id==='manual'?'Manual endpoint':'Same provider name',baseUrl:`http://127.0.0.1:${port}/${id}/v1`,apiKey:'synthetic-only',models:{fast:id==='manual'?['configured-only']:['shared-model','specific-model'],expert:[]}})
   return {requests,hold:()=>{hold=true;return new Promise<void>(resolve=>{started=resolve})},release:()=>{hold=false;release?.()},close:()=>new Promise<void>(resolve=>{server.closeAllConnections();server.close(()=>resolve())})}
 }
 
@@ -41,9 +50,14 @@ export async function runModelChecks(){
   try{
     const before=getDb().prepare('SELECT id,models,api_key_enc FROM providers ORDER BY id').all()
     const catalog=await sys<{items:CatalogProvider[]}>('provider.models',{refresh:true})
-    assert.equal(catalog.items.length,3);assert.equal(catalog.items[0]?.models[0]?.source,'discovered')
+    assert.equal(catalog.items.length,3);assert.equal(catalog.items[0]?.models[0]?.source,'configured')
     assert.equal(catalog.items[2]?.models[0]?.source,'configured');assert.match(catalog.items[2]!.status,/读取失败/)
     assert.deepEqual(getDb().prepare('SELECT id,models,api_key_enc FROM providers ORDER BY id').all(),before)
+    assert.equal((await invokeSys('llm.complete',{prompt:'missing background'},ctx)).ok,false)
+    await sys('settings.set',{settings:{'ai.backgroundModel':JSON.stringify(b),'chat.autoTitle':'false'}})
+    const background=await sys<{text:string}>('llm.complete',{prompt:'SYNTHETIC_BACKGROUND',modelRole:'fast'})
+    assert.match(background.text,/specific-model/)
+    assert.deepEqual(fixture.requests.pop(),{provider:'beta',model:'specific-model'})
     const ca=await sys<{chatId:string}>('chat.create',{selection:a})
     const cb=await sys<{chatId:string}>('chat.create',{selection:b})
     resetDb();assert.deepEqual(chatSelection(ca.chatId),a);assert.deepEqual(chatSelection(cb.chatId),b)
@@ -54,7 +68,13 @@ export async function runModelChecks(){
     const started=fixture.hold(),done=wait(ca.chatId)
     await sys('chat.send',{chatId:ca.chatId,text:'SYNTHETIC_HELD',selection:a});await started
     assert.equal((await invokeSys('chat.set_model',{chatId:ca.chatId,selection:b},ctx)).ok,false)
+    assert.equal((await invokeSys('chat.regenerate',{chatId:ca.chatId,selection:a},ctx)).ok,false)
     fixture.release();assert.equal(await done,'chat.done')
+    const userCount=()=>getDb().prepare("SELECT count(*) AS n FROM messages WHERE chat_id=? AND role='user'").get(ca.chatId) as {n:number}
+    const previousUsers=userCount().n, regenerated=wait(ca.chatId)
+    await sys('chat.regenerate',{chatId:ca.chatId,selection:a})
+    assert.equal(await regenerated,'chat.done');assert.equal(userCount().n,previousUsers)
+
     await sys('chat.set_model',{chatId:ca.chatId,selection:b});await run(ca.chatId,b)
     assert.deepEqual(fixture.requests.at(-1),{provider:'beta',model:'specific-model'})
     await sys('provider.save',{id:b.providerId,name:'Same provider name',enabled:false})

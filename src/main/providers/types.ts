@@ -21,6 +21,7 @@ export interface ToolDef {
 
 export type StreamEvent =
   | { type: 'text'; delta: string }
+  | { type: 'reasoning'; delta: string }
   | { type: 'tool_call'; id: string; name: string; argsJson: string }
   | { type: 'usage'; input: number; output: number }
 

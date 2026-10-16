@@ -1,3 +1,7 @@
+import SkillsLibrary from '../components/SkillsLibrary'
+import ShortcutSettings from '../components/ShortcutSettings'
+import Personalization from '../components/Personalization'
+import {useChatStore} from '../store/chat'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Card, Input, message, Select, Switch, Tabs, Tag, Typography, Radio, Modal, Dropdown } from 'antd'
 import { FolderOpenOutlined, LoginOutlined, PlusOutlined, SettingOutlined, MoreOutlined } from '@ant-design/icons'
@@ -91,6 +95,22 @@ function ProviderEditor({preset,saved,known,onClose,onSaved}:{preset?:PresetInfo
   </Modal>
 }
 
+function BackgroundModelSettings(){
+  const {catalog,loadCatalog}=useChatStore()
+  const [autoTitle,setAutoTitle]=useState(true)
+  useEffect(()=>{void sys<{settings:Record<string,string|null>}>('settings.get',{keys:['chat.autoTitle']}).then(r=>setAutoTitle(r.settings['chat.autoTitle']!=='false')).catch(()=>undefined)},[])
+  const [value,setValue]=useState<string|null>(null)
+  useEffect(()=>{void loadCatalog();void sys<{settings:Record<string,string|null>}>('settings.get',{keys:['ai.backgroundModel']}).then(r=>setValue(r.settings['ai.backgroundModel']??null)).catch(e=>message.error(String(e)))},[loadCatalog])
+  return <Card size="small" title={t('settings.backgroundModel')}>
+    <label><Switch checked={autoTitle} onChange={v=>void sys('settings.set',{settings:{'chat.autoTitle':String(v)}}).then(()=>setAutoTitle(v)).catch(e=>message.error(String(e)))}/>{t('chat.autoTitle')}</label>
+    <p>{t('settings.backgroundDescription')}</p>
+    <Select aria-label={t('settings.backgroundModel')} style={{width:'100%'}} allowClear value={value}
+      placeholder={t('settings.backgroundMissing')}
+      options={catalog.filter(p=>p.ready).flatMap(p=>p.models.map(m=>({value:JSON.stringify({providerId:p.id,model:m.id}),label:`${p.name} / ${m.label} · ${p.id}`})))}
+      onChange={selection=>{void sys('settings.set',{settings:{'ai.backgroundModel':selection??null}}).then(()=>{setValue(selection??null);void message.success(t('settings.saved'))}).catch(e=>message.error(String(e)))}}/>
+  </Card>
+}
+
 function ProviderSettings({presets,saved,refresh}:{presets:PresetInfo[];saved:ProviderInfo[];refresh:()=>void}){
   const [section,setSection]=useState('codex')
   const [editor,setEditor]=useState<{preset?:PresetInfo;saved?:ProviderInfo}|null>(null)
@@ -102,7 +122,7 @@ function ProviderSettings({presets,saved,refresh}:{presets:PresetInfo[];saved:Pr
   const load=async()=>{setLoading(true);setCatalogError('');try{const r=await sys<{items:import('../store/chat').CatalogProvider[]}>('provider.models',{refresh:true});setCatalog(r.items)}catch(e){setCatalogError(String(e));setCatalog([])}finally{setLoading(false)}}
   const edit=(r:ProviderInfo)=>setEditor({saved:r,preset:known.find(p=>p.id===r.id)})
   const changed=()=>{setCatalog([]);refresh()}
-  return <section className="ww-provider-settings">
+  return <section className="ww-provider-settings"><BackgroundModelSettings/>
     <h2>AI 服务提供商</h2>
     <Radio.Group aria-label="提供商类型" className="ww-provider-tabs" value={section} onChange={e=>setSection(e.target.value)} options={[{value:'codex',label:'Codex'},{value:'keys',label:'自定义 API 密钥'},{value:'custom',label:'自定义供应商'}]}/>
     {section==='codex'?<ChatGPTCard onChanged={changed}/>:<>
@@ -186,13 +206,15 @@ function ChatGPTCard({ onChanged }: { onChanged: () => void }) {
 }
 
 function SearchCard() {
+  const [mode,setMode]=useState('basic')
   const [brave, setBrave] = useState('')
   const [tavily, setTavily] = useState('')
   const [blacklist, setBlacklist] = useState('')
 
   useEffect(() => {
-    sys<{ settings: Record<string, string | null> }>('settings.get', { keys: ['search.braveKey', 'search.tavilyKey'] })
+    sys<{ settings: Record<string, string | null> }>('settings.get', { keys: ['search.braveKey', 'search.tavilyKey','search.mode'] })
       .then((r) => {
+        setMode(r.settings['search.mode']??'basic')
         setBrave(r.settings['search.braveKey'] ?? '')
         setTavily(r.settings['search.tavilyKey'] ?? '')
       })
@@ -206,14 +228,15 @@ function SearchCard() {
     <div className="space-y-4">
       <Card size="small" title="联网搜索源（BYOK）">
         <div className="space-y-2">
+          <Select aria-label={t('search.mode')} style={{width:'100%'}} value={mode} onChange={setMode} options={[{value:'basic',label:t('search.basic')},{value:'smart',label:t('search.smart')},{value:'hq_first',label:t('search.hq')}]}/>
           <Input.Password addonBefore="Brave Key" placeholder="可选" value={brave} onChange={(e) => setBrave(e.target.value)} />
           <Input.Password addonBefore="Tavily Key" placeholder="可选" value={tavily} onChange={(e) => setTavily(e.target.value)} />
-          <div className="text-xs text-[var(--ww-text-3)]">不配置时使用 DuckDuckGo 免费搜索兜底。</div>
+          <div className="flex gap-2">{(['brave','tavily'] as const).map(engine=><Button key={engine} size="small" onClick={()=>void sys('web.verify_key',{engine}).then(()=>message.success(t('search.connected'))).catch(e=>message.error(String(e)))}>{engine} · {t('search.verify')}</Button>)}</div>
           <Button
             size="small"
             type="primary"
             onClick={() => {
-              void sys('settings.set', { settings: { 'search.braveKey': brave || null, 'search.tavilyKey': tavily || null } })
+              void sys('settings.set', { settings: { 'search.braveKey': brave || null, 'search.tavilyKey': tavily || null,'search.mode':mode } })
                 .then(() => void message.success('已保存'))
                 .catch((e) => void message.error(String(e)))
             }}
@@ -248,13 +271,19 @@ function SearchCard() {
 }
 
 function MediaCard() {
+  const [downloader,setDownloader]=useState('')
+  const [ocrEnabled,setOcrEnabled]=useState(true)
+  const [language,setLanguage]=useState('auto'),[dictionary,setDictionary]=useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [key, setKey] = useState('')
   const [model, setModel] = useState('')
 
   useEffect(() => {
-    sys<{ settings: Record<string, string | null> }>('settings.get', { keys: ['media.asrBaseUrl', 'media.asrKey', 'media.asrModel'] })
+    sys<{ settings: Record<string, string | null> }>('settings.get', { keys: ['media.asrBaseUrl', 'media.asrKey', 'media.asrModel','media.transcriptionLanguage','media.dictionary','media.ocrEnabled','media.downloaderPath'] })
       .then((r) => {
+        setDownloader(r.settings['media.downloaderPath']??'')
+        setOcrEnabled(r.settings['media.ocrEnabled']!=='false')
+        setLanguage(r.settings['media.transcriptionLanguage']??'auto');setDictionary(r.settings['media.dictionary']??'')
         setBaseUrl(r.settings['media.asrBaseUrl'] ?? 'https://api.openai.com/v1')
         setKey(r.settings['media.asrKey'] ?? '')
         setModel(r.settings['media.asrModel'] ?? 'whisper-1')
@@ -265,6 +294,10 @@ function MediaCard() {
   return (
     <Card size="small" title="语音转写（ASR，BYOK）">
       <div className="space-y-2">
+        <Input addonBefore={t('media.downloader')} value={downloader} onChange={e=>setDownloader(e.target.value)} placeholder={t('media.downloaderHint')}/>
+        <label><Switch checked={ocrEnabled} onChange={setOcrEnabled}/> {t('media.ocrEnabled')}</label>
+        <Select aria-label={t('media.language')} value={language} onChange={setLanguage} options={[{value:'auto',label:t('media.auto')},{value:'zh-CN',label:'中文'},{value:'en-US',label:'English'}]}/>
+        <Input.TextArea placeholder={t('media.dictionary')} value={dictionary} maxLength={10000} onChange={e=>setDictionary(e.target.value)}/>
         <Input addonBefore="Base URL" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
         <Input.Password addonBefore="API Key" placeholder="sk-…" value={key} onChange={(e) => setKey(e.target.value)} />
         <Input addonBefore="模型" placeholder="whisper-1" value={model} onChange={(e) => setModel(e.target.value)} />
@@ -277,7 +310,7 @@ function MediaCard() {
               settings: {
                 'media.asrBaseUrl': baseUrl || null,
                 'media.asrKey': key || null,
-                'media.asrModel': model || null
+                'media.asrModel': model || null,'media.transcriptionLanguage':language,'media.dictionary':dictionary,'media.ocrEnabled':String(ocrEnabled),'media.downloaderPath':downloader||null
               }
             })
               .then(() => void message.success('已保存'))
@@ -312,6 +345,7 @@ interface SkillInfo {
 function McpCard() {
   const [servers, setServers] = useState<McpServerInfo[]>([])
   const [form, setForm] = useState({ name: '', command: '', args: '', env: '' })
+  const [transport,setTransport]=useState<'stdio'|'http'>('stdio'),[url,setUrl]=useState(''),[token,setToken]=useState(''),[tokenHeader,setTokenHeader]=useState('Authorization')
   const [busy, setBusy] = useState(false)
 
   const refresh = useCallback(() => {
@@ -320,13 +354,14 @@ function McpCard() {
   useEffect(refresh, [refresh])
 
   const add = async () => {
-    if (!form.name.trim() || !form.command.trim()) {
+    if (!form.name.trim() || (transport==='stdio'?!form.command.trim():!url.trim())) {
       void message.warning('名称与命令必填')
       return
     }
     setBusy(true)
     try {
       await sys('mcp.servers_save', {
+        transport,url:transport==='http'?url:undefined,token:token||undefined,tokenHeader,
         name: form.name.trim(),
         command: form.command.trim(),
         args: form.args.split(/\s+/).filter(Boolean),
@@ -338,7 +373,7 @@ function McpCard() {
             .map((kv) => [kv[0]!, kv[1]!])
         )
       })
-      setForm({ name: '', command: '', args: '', env: '' })
+      setForm({ name: '', command: '', args: '', env: '' });setToken('');setUrl('')
       void message.success('已添加，正在连接…')
       setTimeout(refresh, 1500)
     } catch (e) {
@@ -349,7 +384,7 @@ function McpCard() {
   }
 
   return (
-    <Card size="small" title="MCP 服务器（stdio）">
+    <Card size="small" title={t('mcp.title')}>
       <div className="space-y-3">
         {servers.map((s) => (
           <div key={s.id} className="flex items-center gap-2 rounded-md border border-[var(--ww-border)] p-2 text-sm">
@@ -368,10 +403,10 @@ function McpCard() {
             <Button
               size="small"
               onClick={() => {
-                void sys('mcp.tools', { serverId: s.id }).then(() => {
+                void sys<{toolCount:number}>('mcp.test_connection', { serverId: s.id }).then(() => {
                   void message.success('已刷新工具')
                   refresh()
-                })
+                }).catch(e=>message.error(String(e)))
               }}
             >
               刷新
@@ -383,6 +418,8 @@ function McpCard() {
         ))}
         <div className="space-y-2 rounded-md border border-dashed border-[var(--ww-border)] p-3 dark:border-[#404040]">
           <div className="text-xs font-medium text-[var(--ww-text-3)]">添加服务器</div>
+          <Select value={transport} onChange={setTransport} options={[{value:'stdio',label:'stdio'},{value:'http',label:'HTTP'}]}/>
+          {transport==='http'&&<><Input placeholder={t('mcp.url')} value={url} onChange={e=>setUrl(e.target.value)}/><Input.Password placeholder={t('mcp.token')} value={token} onChange={e=>setToken(e.target.value)}/><Input placeholder={t('mcp.header')} value={tokenHeader} onChange={e=>setTokenHeader(e.target.value)}/></>}
           <Input size="small" placeholder="名称，如 filesystem" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input size="small" placeholder="命令，如 npx" value={form.command} onChange={(e) => setForm({ ...form, command: e.target.value })} />
           <Input size="small" placeholder="参数（空格分隔），如 -y @modelcontextprotocol/server-filesystem /path" value={form.args} onChange={(e) => setForm({ ...form, args: e.target.value })} />
@@ -397,7 +434,7 @@ function McpCard() {
             添加
           </Button>
         </div>
-        <div className="text-xs text-[var(--ww-text-3)]">MCP 工具以 mcp__服务器__工具 名义注入 Agent，可直接调用。</div>
+        <div className="text-xs text-[var(--ww-text-3)]">{t('mcp.discoveryHint')}</div>
       </div>
     </Card>
   )
@@ -577,8 +614,10 @@ export default function SettingsView() {
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="max-w-3xl">
-        <Tabs
+        <Tabs defaultActiveKey="providers"
           items={[
+            {key:'shortcuts',label:t('shortcuts.title'),children:<ShortcutSettings/>},
+            {key:'personalization',label:t('profile.title'),children:<Personalization/>},
             {
               key: 'providers',
               label: '模型供应商',
@@ -609,7 +648,7 @@ export default function SettingsView() {
             {
               key: 'skills',
               label: '技能',
-              children: <SkillsCard />
+              children: <SkillsLibrary />
             },
             {
               key: 'workspace',

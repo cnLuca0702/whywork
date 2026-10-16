@@ -24,7 +24,7 @@ interface NotesState {
   total: number
   loading: boolean
   warning:string
-  list: (opts: { filter?: Record<string, unknown>; query?: string;searchMode?:'fts'|'text' }) => Promise<void>
+  list: (opts: { filter?: Record<string, unknown>; query?: string;sort?:'modified'|'created'|'accessed'|'title';limit?:number;offset?:number;searchMode?:'fts'|'text' }) => Promise<void>
   setStatus: (noteId: string, patch: { favorite?: boolean; pinned?: boolean; later?: boolean }) => Promise<void>
   remove: (noteId: string) => Promise<void>
   restore: (noteId: string) => Promise<void>

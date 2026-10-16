@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'node:path'
 import { getWorkspacePath } from '../syscalls/app'
-import { DDL_STATEMENTS } from './ddl'
+import { DDL_STATEMENTS, migrateDb } from './ddl'
 
 /** better-sqlite3 单例（工作区范围 <ws>/.whywork/whywork.db，WAL） */
 
@@ -17,6 +17,7 @@ export function getDb(): Database.Database {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   for (const stmt of DDL_STATEMENTS) db.exec(stmt)
+  migrateDb(db)
   return db
 }
 
@@ -34,5 +35,6 @@ export function openDbAt(file: string): Database.Database {
   d.pragma('journal_mode = WAL')
   d.pragma('foreign_keys = ON')
   for (const stmt of DDL_STATEMENTS) d.exec(stmt)
+  migrateDb(d)
   return d
 }

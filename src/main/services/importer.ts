@@ -23,6 +23,7 @@ export interface ImportResult {
   /** 输入文件所在目录（供本地图片相对路径解析） */
   baseDir: string
   tags?: string[]
+  scannedPdf?:string
 }
 
 /** 读文本：自动识别 UTF-8 BOM / UTF-16 LE/BE（REC-02） */
@@ -127,6 +128,31 @@ export async function importFile(absPath: string): Promise<ImportResult[]> {
     return [{ title: pathToTitle(norm), markdown: readTextSmart(norm), source: 'text', baseDir }]
   }
 
+  if(ext==='.xlsx'){
+    const ExcelJS=await import('exceljs')
+    const book=new ExcelJS.default.Workbook();await book.xlsx.readFile(norm)
+    const parts:string[]=[];let budget=100_000
+    for(const sheet of book.worksheets){
+      parts.push(`## ${sheet.name}`)
+      sheet.eachRow((row)=>{if(budget<=0)return;const cells:string[]=[];row.eachCell({includeEmpty:true},cell=>cells.push(cell.text.replace(/\|/g,'\\|')));const line=cells.join(' | ');parts.push(line.slice(0,budget));budget-=line.length+1})
+    }
+    if(budget<=0)parts.push('（内容已截断）')
+    return [{title:pathToTitle(norm),markdown:parts.join('\n'),source:'word',baseDir}]
+  }
+  if(ext==='.pptx'){
+    const JSZip=(await import('jszip')).default
+    const zip=await JSZip.loadAsync(fs.readFileSync(norm)),parts:string[]=[]
+    const files=Object.keys(zip.files).filter(name=>/^ppt\/slides\/slide\d+\.xml$/.test(name)).sort((a,b)=>Number(a.match(/slide(\d+)/)?.[1])-Number(b.match(/slide(\d+)/)?.[1]))
+    for(const file of files.slice(0,200)){
+      const xml=await zip.file(file)!.async('string')
+      if(xml.length>10_000_000)throw new Error('幻灯片内容过大')
+      const texts=[...xml.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g)].map(m=>m[1]!.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&amp;/g,'&'))
+      parts.push(`## ${file.match(/slide(\d+)/)?.[1]}\n`+texts.join('\n'))
+      if(parts.join('\n').length>100_000)break
+    }
+    return [{title:pathToTitle(norm),markdown:parts.join('\n\n').slice(0,100_000),source:'ppt',baseDir}]
+  }
+
   if (ext === '.enex') {
     return importEnex(norm)
   }
@@ -165,7 +191,9 @@ export async function importFile(absPath: string): Promise<ImportResult[]> {
       if (line) lines.push(line)
       parts.push(...lines.map((l) => l.trim()).filter(Boolean), '', '---', '')
     }
-    return [{ title: pathToTitle(norm), markdown: parts.join('\n'), source: 'pdf', baseDir }]
+    const scanned=parts.slice(2).join('').replace(/[-\s]/g,'').length<30
+    await doc.cleanup()
+    return [{ title: pathToTitle(norm), markdown: parts.join('\n'), source: 'pdf', baseDir,...(scanned?{scannedPdf:norm}:{}) }]
   }
 
   if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext)) {
@@ -190,9 +218,10 @@ export function collectImportable(dir: string): string[] {
       return
     }
     for (const e of entries) {
+      if(e.isSymbolicLink())continue
       const full = path.join(d, e.name)
       if (e.isDirectory()) walk(full)
-      else if (/\.(md|markdown|txt|enex|docx|pdf|png|jpe?g|gif|webp|svg|wav|mp3|m4a|aiff|flac|ogg|webm)$/i.test(e.name)) {
+      else if (/\.(md|markdown|txt|enex|docx|pptx|xlsx|pdf|png|jpe?g|gif|webp|svg|wav|mp3|m4a|aiff|flac|ogg|webm)$/i.test(e.name)) {
         out.push(full)
       }
     }

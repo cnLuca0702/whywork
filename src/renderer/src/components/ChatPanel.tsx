@@ -1,7 +1,12 @@
+import VaultPanel from './VaultPanel'
+import ConfirmCard from './ConfirmCard'
+import MarkdownContent,{openCitation} from './MarkdownContent'
+import ChatComposer from './ChatComposer'
+import {t} from '../i18n/zh'
 import RecordingControls from './RecordingControls'
 import brandIcon from '../../../../resources/icon.svg'
 import { useEffect, useRef, useState } from 'react'
-import { Button, Drawer, Input, Modal, Popconfirm, Select, Spin, Tag, Tooltip, message } from 'antd'
+import { Button, Drawer, Input, Modal, Select, Spin, Tag, Tooltip, message } from 'antd'
 import {
   PlusOutlined,
   SendOutlined,
@@ -39,16 +44,16 @@ function ToolCard({ name, phase, output }: { name: string; phase: string; output
   )
 }
 
-function MsgBubble({ m }: { m: ChatMsg }) {
+function MsgBubble({ m, last, onRegenerate }: { m: ChatMsg; last?:boolean; onRegenerate?:()=>void }) {
   if (m.role === 'user') {
     return (
       <div className="mb-3 flex justify-end">
-        <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-[var(--ww-primary)] px-3 py-2 text-sm text-white">{m.content}</div>
+        <div className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-[var(--ww-primary)] px-3 py-2 text-sm text-white">{m.content}{m.refs?.noteIds?.map(id=><Button key={id} size="small" onClick={()=>void openCitation({n:0,noteId:id,title:id,snippet:''})}>@ {m.refs?.noteTitles?.[id]??id.slice(0,8)}</Button>)}{m.refs?.skills?.map(name=><Tag key={name}>/ {name}</Tag>)}</div>
       </div>
     )
   }
   if (m.role === 'assistant') {
-    if (m.toolCalls && m.toolCalls.length > 0 && !m.content) {
+    if (m.toolCalls && m.toolCalls.length > 0 && !m.content && !m.reasoning) {
       return (
         <div className="mb-3">
           {m.toolCalls.map((tc) => (
@@ -57,105 +62,40 @@ function MsgBubble({ m }: { m: ChatMsg }) {
         </div>
       )
     }
-    return (
-      <div className="mb-3 flex">
-        <div className="prose prose-sm dark:prose-invert max-w-[95%] whitespace-pre-wrap rounded-xl bg-[var(--ww-hover)] px-3 py-2 text-sm dark:bg-[#232323]">
-          {m.content}
-        </div>
+    return <div className="ww-assistant mb-3 rounded-xl bg-[var(--ww-hover)] px-3 py-2 text-sm">
+      {m.usage&&<div className="text-xs text-[var(--ww-text-3)]">{t('chat.usage',{n:m.usage.calls,input:m.usage.input,output:m.usage.output})}</div>}
+      {m.reasoning&&<details><summary>{t('chat.thought',{n:m.reasoning.length})}</summary><div className="whitespace-pre-wrap">{m.reasoning}</div></details>}
+      <MarkdownContent text={m.content??''} sources={m.sources}/>
+      {!!m.sources?.length&&<div>{t('chat.sources')}{m.sources.map(s=><Button type="link" key={s.n} onClick={()=>void openCitation(s)}>[{s.n}] {s.title}</Button>)}</div>}
+      <div className="ww-reply-actions">
+        <Button size="small" onClick={()=>void navigator.clipboard.writeText(m.content??'').then(()=>message.success(t('chat.copied'))).catch(e=>message.error(String(e)))}>{t('chat.copy')}</Button>
+        {!!m.sources?.length&&<Button size="small" onClick={()=>void navigator.clipboard.writeText((m.content??'')+'\n\n'+t('chat.sources')+'：'+m.sources!.map(s=>`[${s.n}] ${s.title}`).join('；')).catch(e=>message.error(String(e)))}>{t('chat.copySources')}</Button>}
+        {last&&<Button size="small" onClick={onRegenerate}>{t('chat.regenerate')}</Button>}
       </div>
-    )
+    </div>
   }
+
   return null
 }
 
-interface VaultChangeRow {
-  change_id: string
-  ts: number
-  kind: string
-  op: string
-  path: string
-  rolled_back: number
-}
-
-function VaultDrawer({ open, onClose, chatId }: { open: boolean; onClose: () => void; chatId: string | null }) {
-  const [rows, setRows] = useState<VaultChangeRow[]>([])
-  const load = () => {
-    sys<{ changes: VaultChangeRow[] }>('vault.list', chatId ? { chatId } : undefined)
-      .then((r) => setRows(r.changes))
-      .catch(() => setRows([]))
-  }
-  useEffect(load, [chatId, open])
-
-  return (
-    <Drawer title="本次会话变更（rVault）" open={open} onClose={onClose} width={380}>
-      {rows.length === 0 ? (
-        <div className="text-sm text-[var(--ww-text-3)]">暂无变更。Agent 创建或修改笔记/文件后会在此列出，可一键回滚。</div>
-      ) : (
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <div key={r.change_id} className="flex items-center gap-2 rounded-md border border-[var(--ww-border)] p-2 text-xs">
-              <Tag color={r.kind === 'note' ? 'blue' : 'cyan'}>{r.kind}</Tag>
-              <Tag>{r.op}</Tag>
-              <span className="min-w-0 flex-1 truncate" title={r.path}>
-                {r.path}
-              </span>
-              {r.rolled_back ? (
-                <Tag color="default">已回滚</Tag>
-              ) : (
-                <Button
-                  size="small"
-                  danger
-                  icon={<RollbackOutlined />}
-                  onClick={() => {
-                    void sys('vault.rollback', { changeId: r.change_id })
-                      .then(load)
-                      .catch((e) => void message.error(String(e)))
-                  }}
-                >
-                  回滚
-                </Button>
-              )}
-            </div>
-          ))}
-          <Button
-            block
-            type="primary"
-            danger
-            ghost
-            disabled={chatId === null}
-            onClick={() => {
-              if (!chatId) return
-              void sys('vault.rollback', { chatId, all: true })
-                .then((r) => {
-                  void message.success(`已回滚 ${(r as { rolledBack: number }).rolledBack} 项`)
-                  load()
-                })
-                .catch((e) => void message.error(String(e)))
-            }}
-          >
-            回滚全部
-          </Button>
-        </div>
-      )}
-    </Drawer>
-  )
-}
-
 export default function ChatPanel() {
-  const { draft:input, setDraft:setInput, activeChatId, chats, messages, streaming, streamText, toolEvents, error, openChat, send, stop, setModel, loadChats, draftSelection, catalog, catalogLoading, catalogError, loadCatalog } =
+  const { draft:input, setDraft:setInput, activeChatId, chats, messages, streaming, streamText, streamReasoning, streamSources, confirmations, regenerate, toolEvents, error, openChat, send, stop, setModel, loadChats, draftSelection, catalog, catalogLoading, catalogError, loadCatalog } =
     useChatStore()
   const currentView=useUiStore(s=>s.view)
   const activeNoteId = useUiStore((s) => s.activeNoteId)
   const setView = useUiStore((s) => s.setView)
-  useSysEvent('chat.confirm', (payload) => {
-    const p = payload as {id:string;chatId:string;name:string;args:string}
-    Modal.confirm({ title: '允许助手执行此操作？', content: <div><b>{p.name}</b><pre className="max-h-64 overflow-auto whitespace-pre-wrap">{p.args}</pre></div>,
-      okText: '允许', cancelText: '拒绝',
-      onOk: () => sys('chat.confirm', {...p,approved:true}),
-      onCancel: () => sys('chat.confirm', {...p,approved:false}) })
-  })
+  useEffect(()=>{
+    const prevent=(event:BeforeUnloadEvent)=>{if(useChatStore.getState().streaming){event.preventDefault();event.returnValue=t('chat.runningLock')}}
+    window.addEventListener('beforeunload',prevent)
+    return()=>window.removeEventListener('beforeunload',prevent)
+  },[])
   const sendingRef = useRef(false)
   const [sending, setSending] = useState(false)
+  const [vaultCount,setVaultCount]=useState(0)
+  const refreshVault=()=>{if(activeChatId)void sys<{activeCount:number}>('vault.list',{chatId:activeChatId}).then(r=>setVaultCount(r.activeCount)).catch(()=>undefined);else setVaultCount(0)}
+  useEffect(refreshVault,[activeChatId,messages.length])
+  useSysEvent('vault.changed',refreshVault)
+  useSysEvent('notes.changed',refreshVault)
   const [vaultOpen, setVaultOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
@@ -193,6 +133,15 @@ export default function ChatPanel() {
     } catch(e) {setInput(text);void message.error(String(e))}
     finally {sendingRef.current=false;setSending(false)}
   }
+  const doRegenerate=async()=>{
+    if(!activeChatId||streaming)return
+    try {
+      const {changes}=await sys<{changes:{rolled_back:number}[]}>('vault.list',{chatId:activeChatId})
+      if(changes.some(c=>!c.rolled_back))Modal.confirm({title:t('chat.regenerate'),content:t('chat.regenerateWarning'),okText:t('common.confirm'),cancelText:t('common.cancel'),onOk:()=>regenerate(true)})
+      else await regenerate()
+    }catch(e){void message.error(String(e))}
+  }
+  const lastAssistant=[...messages].reverse().find(m=>m.role==='assistant')?.msgId
   const empty = messages.length === 0 && !streaming
 
 
@@ -201,21 +150,22 @@ export default function ChatPanel() {
       <div className="ww-panel-bar"><span>{activeChat?.title || '新对话'}</span><div className="ww-panel-actions">
         <Tooltip title="知识库"><Button type="text" aria-label="打开知识库" icon={<FolderOpenOutlined/>} onClick={()=>void setView('notes')}/></Tooltip>
         <Tooltip title="新对话"><Button type="text" aria-label="新对话" icon={<PlusOutlined/>} onClick={()=>useChatStore.getState().newChat()}/></Tooltip>
-        <Tooltip title="变更记录与回滚"><Button type="text" aria-label="变更记录与回滚" icon={<SafetyCertificateOutlined/>} onClick={()=>setVaultOpen(true)}/></Tooltip>
+        <Tooltip title={t('vault.hint')}><Button type="text" aria-label={t('vault.title')} icon={<SafetyCertificateOutlined/>} onClick={()=>setVaultOpen(true)}>{vaultCount||''}</Button></Tooltip>
       </div></div>
       <div className="ww-chat-body">
       <div className="ww-messages">
         {empty && <div className="ww-chat-welcome"><img src={brandIcon} width={48} height={48} alt=""/><h1>和你的知识库对话</h1><p>从一个问题、一篇笔记，或一份资料开始。</p></div>}
         {messages.map((m) => (
-          <MsgBubble key={m.msgId} m={m} />
+          <MsgBubble key={m.msgId} m={m} last={!streaming&&m.msgId===lastAssistant} onRegenerate={()=>void doRegenerate()}/>
         ))}
         {toolEvents.map((t, i) => (
           <ToolCard key={`${t.name}-${i}`} name={t.name} phase={t.phase} output={t.output} />
         ))}
+        {streaming&&streamReasoning&&<details><summary>{t('chat.thinking',{n:streamReasoning.length})}</summary><div className="whitespace-pre-wrap">{streamReasoning}</div></details>}
         {streaming && streamText && (
           <div className="mb-3 flex">
             <div className="max-w-[95%] whitespace-pre-wrap rounded-xl bg-[var(--ww-hover)] px-3 py-2 text-sm dark:bg-[#232323]">
-              {streamText}
+              <MarkdownContent text={streamText} sources={streamSources}/>
               <span className="animate-pulse">▍</span>
             </div>
           </div>
@@ -225,26 +175,13 @@ export default function ChatPanel() {
             <Spin />
           </div>
         )}
+        {confirmations.map(card=><ConfirmCard key={card.id} card={card}/>)}
         <div ref={bottomRef} />
       </div>
 
       <RecordingControls/>
       <div className="ww-composer">
-        <Input.TextArea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onPressEnter={(e) => {
-            if (!e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
-              e.preventDefault()
-              void doSend()
-            }
-          }}
-          aria-label="对话输入"
-          variant="borderless"
-          placeholder={activeNoteId ? '就当前笔记提问，或交给我一个任务…' : '直接提问，或描述你想完成的工作…'}
-          autoSize={{ minRows: empty ? 4 : 2, maxRows: 8 }}
-          disabled={streaming || sending}
-        />
+        <ChatComposer value={input} onChange={setInput} onSend={()=>void doSend()} disabled={streaming||sending} empty={empty}/>
         <div className="ww-composer-actions">
           <span className="flex-1" /><span className="ww-enter-hint">⇧ Enter 换行</span>
           {streaming ? (
@@ -278,14 +215,9 @@ export default function ChatPanel() {
       </div>}
       </div>
 
-      {activeChatId && (
-        <Popconfirm title="删除该会话？" onConfirm={() => void sys('chat.delete', { chatId: activeChatId }).then(() => openChat(null))}>
-          <span />
-        </Popconfirm>
-      )}
 
       {error && <div className="mx-3 my-2 rounded bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>}
-      <VaultDrawer open={vaultOpen} onClose={() => setVaultOpen(false)} chatId={activeChatId} />
+      <VaultPanel open={vaultOpen} onClose={() => setVaultOpen(false)} chatId={activeChatId} />
     </div>
   )
 }

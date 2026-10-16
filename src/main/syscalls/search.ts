@@ -1,3 +1,4 @@
+import {ocrImages} from '../services/ocr-index'
 import {dialog} from 'electron'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -22,15 +23,15 @@ function knownFiles():Set<string>{
   if(getDb().prepare("SELECT name FROM sqlite_master WHERE name='watch_items'").get())for(const r of getDb().prepare('SELECT file,note_ids FROM watch_items').all() as {file:string;note_ids:string}[]){try{if((JSON.parse(r.note_ids) as string[]).some(id=>repo.getNote(id)?.deleted_at===null))known.add(r.file)}catch{/* invalid provenance excluded */}}
   return known
 }
-export async function searchLocalNotes(query:string,mode:'fts'|'text',filter:repo.ListFilter={},limit=100){
+export async function searchLocalNotes(query:string,mode:'fts'|'text',filter:repo.ListFilter={},limit=100,offset=0,sort?:'modified'|'created'|'accessed'|'title'){
   const candidates=repo.listNotes(filter,'modified',5001,0).items,warning:string[]=[]
   if(candidates.length>5000)warning.push('仅检查最近5000条符合筛选的笔记，请缩小范围')
   const allowed=candidates.slice(0,5000),items:{note:repo.NoteRow;snippet:string;source:string;score:number}[]=[]
   if(mode==='fts'){
-    const match='"'+query.replaceAll('"','""')+'"'
+    const match='"'+repo.cjkPad(query).replaceAll('"','""')+'"'
     const matches=getDb().prepare(`SELECT n.note_id AS id,snippet(notes_fts,3,'⟦','⟧','…',24) AS snippet,bm25(notes_fts) AS score FROM notes_fts JOIN notes n ON n.rowid=notes_fts.rowid WHERE notes_fts MATCH ? ORDER BY score LIMIT 5001`).all(match) as {id:string;snippet:string;score:number}[]
     const byId=new Map(allowed.map(n=>[n.note_id,n]))
-    for(const hit of matches){const note=byId.get(hit.id);if(note)items.push({note,snippet:hit.snippet.replace(/<!--[\s\S]*$/,'').trim(),source:'FTS5 索引',score:hit.score})}
+    for(const hit of matches){const note=byId.get(hit.id);if(note)items.push({note,snippet:repo.cjkUnpad(hit.snippet.replace(/<!--[\s\S]*$/,'')).trim(),source:'FTS5 索引',score:hit.score})}
     if(matches.length>5000)warning.push('索引命中过多，显示有限结果')
   }else{
     let bytes=0,skipped=0
@@ -40,13 +41,14 @@ export async function searchLocalNotes(query:string,mode:'fts'|'text',filter:rep
         if(stat.size>1024*1024||bytes+stat.size>20*1024*1024){skipped++;continue}
         bytes+=stat.size
         const body=parseFrontmatter(await fs.readFile(abs,'utf8')).body.replace(/\n*<!-- source-path:[\s\S]*?-->\s*$/,'')
-        const hit=literalMatch(note.title,body,query);if(hit)items.push({note,snippet:hit.snippet,source:'本地正文 · 逐词匹配',score:hit.score})
+        const hit=literalMatch(note.title,body,query),imageHit=hit?null:literalMatch('',ocrImages(note.note_id).map(i=>i.ocrText).join('\n'),query);const found=hit??imageHit;if(found)items.push({note,snippet:(imageHit?'图片文字：':'')+found.snippet,source:imageHit?'图片文字':'本地正文 · 逐词匹配',score:found.score})
       }catch{skipped++}
     }
     items.sort((a,b)=>b.score-a.score||b.note.modified_at-a.note.modified_at)
     if(skipped)warning.push(`${skipped}条因文件不可读、单篇超过1MB或本次20MB上限未检查`)
   }
-  return{items:items.slice(0,limit),total:items.length,warning:warning.join('；'),mode}
+  if(sort)items.sort((a,b)=>sort==='title'?a.note.title.localeCompare(b.note.title):b.note[sort==='created'?'created_at':sort==='accessed'?'accessed_at':'modified_at']-a.note[sort==='created'?'created_at':sort==='accessed'?'accessed_at':'modified_at'])
+  return{items:items.slice(offset,offset+limit),total:items.length,warning:warning.join('；'),mode}
 }
 export function registerSearchDomain(){register('search',{
   choose_folder:{handler:async(_p,ctx)=>{

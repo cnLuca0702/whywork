@@ -154,3 +154,23 @@ export const DDL_STATEMENTS: string[] = [
     tokenize = 'unicode61'
   )`
 ]
+
+/** Additive, restart-safe migrations shared by normal and isolated workspaces. */
+export function migrateDb(db: import('better-sqlite3').Database): void {
+  db.transaction(() => {
+    db.exec("CREATE TABLE IF NOT EXISTS chat_confirmations(id TEXT PRIMARY KEY,chat_id TEXT NOT NULL REFERENCES chats(chat_id) ON DELETE CASCADE,preview TEXT NOT NULL,state TEXT NOT NULL,created_at INTEGER NOT NULL)")
+    db.exec('CREATE TABLE IF NOT EXISTS memory_flush(chat_id TEXT PRIMARY KEY, last_row INTEGER NOT NULL)')
+    db.exec('CREATE TABLE IF NOT EXISTS saved_recordings(id TEXT PRIMARY KEY,note_id TEXT NOT NULL,path TEXT NOT NULL,hash TEXT NOT NULL,duration_ms INTEGER NOT NULL)')
+    const recordingColumns=new Set((db.prepare('PRAGMA table_info(saved_recordings)').all() as {name:string}[]).map(c=>c.name))
+    for(const [name,type] of Object.entries({key_points:"TEXT DEFAULT ''",language:"TEXT DEFAULT 'auto'",segment_of:'TEXT',segment_index:'INTEGER',transcript_note_id:'TEXT',minutes_note_id:'TEXT'}))if(!recordingColumns.has(name))db.exec(`ALTER TABLE saved_recordings ADD COLUMN ${name} ${type}`)
+    const resourceColumns=new Set((db.prepare('PRAGMA table_info(resources)').all() as {name:string}[]).map(c=>c.name))
+    if(!resourceColumns.has('ocr_managed'))db.exec('ALTER TABLE resources ADD COLUMN ocr_managed INTEGER NOT NULL DEFAULT 0')
+    db.exec('CREATE TABLE IF NOT EXISTS resource_ocr(resource_id TEXT PRIMARY KEY REFERENCES resources(resource_id) ON DELETE CASCADE,text TEXT NOT NULL,items TEXT,engine TEXT,created_at INTEGER NOT NULL)')
+    const mcpColumns=new Set((db.prepare('PRAGMA table_info(mcp_servers)').all() as {name:string}[]).map(c=>c.name))
+    for(const [name,type] of Object.entries({transport:"TEXT DEFAULT 'stdio'",url:'TEXT',token_enc:'TEXT',token_header:"TEXT DEFAULT 'Authorization'"}))if(!mcpColumns.has(name))db.exec(`ALTER TABLE mcp_servers ADD COLUMN ${name} ${type}`)
+    const chatColumns=new Set((db.prepare('PRAGMA table_info(chats)').all() as {name:string}[]).map(c=>c.name))
+    if(!chatColumns.has('auto_title'))db.exec('ALTER TABLE chats ADD COLUMN auto_title INTEGER NOT NULL DEFAULT 1')
+    const columns = new Set((db.prepare('PRAGMA table_info(messages)').all() as {name:string}[]).map(c => c.name))
+    for (const column of ['reasoning', 'usage', 'refs', 'sources']) if (!columns.has(column)) db.exec(`ALTER TABLE messages ADD COLUMN ${column} TEXT`)
+  })()
+}

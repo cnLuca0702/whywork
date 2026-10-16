@@ -242,6 +242,7 @@ if (!gotLock) {
 
   app.on('will-quit',()=>{if(testRoot&&!recoveryWorker){resetDb();fs.rmSync(testRoot,{recursive:true,force:true})}})
   app.on('window-all-closed', () => {
+    if(testMode)return // Isolated checks own app lifetime; PDF helper windows are transient.
     void closeBrowser(); void stopPairing()
     closeWatchers()
     closeMcp()

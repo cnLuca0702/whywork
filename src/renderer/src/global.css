@@ -387,3 +387,16 @@ textarea.ant-input::placeholder {
 .ww-rail-btn:hover { background: var(--ww-hover); color: var(--ww-text); }
 .ww-rail-btn.is-active { background: var(--ww-primary-soft); color: var(--ww-primary); }
 .ww-rail-sep { height: 1px; width: 24px; margin: 6px auto; background: var(--ww-border); }
+
+.ww-markdown { overflow-wrap: anywhere; }
+.ww-markdown pre { overflow-x: auto; white-space: pre; padding: 12px; border-radius: 6px; background: var(--ww-bg-soft); }
+.ww-markdown table { display: block; overflow-x: auto; border-collapse: collapse; }
+.ww-markdown th, .ww-markdown td { border: 1px solid var(--ww-border); padding: 6px; }
+.ww-markdown .hljs-keyword, .ww-markdown .hljs-selector-tag { color: var(--ww-primary); }
+.ww-markdown .hljs-string { color: #28804a; }
+.dark .ww-markdown .hljs-string { color: #8ed9a8; }
+.ww-markdown .hljs-comment { color: var(--ww-text-2); }
+.ww-reply-actions { display: flex; gap: 6px; opacity: 0; }
+.ww-assistant:hover .ww-reply-actions, .ww-assistant:focus-within .ww-reply-actions { opacity: 1; }
+@media (hover: none) { .ww-reply-actions { opacity: 1; } }
+.ww-citation-hit { background: var(--ww-primary-soft); outline: 2px solid var(--ww-primary); }

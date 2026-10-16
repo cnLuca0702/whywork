@@ -473,6 +473,7 @@ export async function runCases(): Promise<CaseResult[]> {
   }, 'BLOCKED')
 
   // ================= MEDIA =================
+  const mediaFixture=(file:string)=>{const target=path.join(tmpWs,'resources','case-media',path.basename(file));fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(path.join(FX,file),target);return target}
   await expect('MEDIA-01', 'MEDIA', '已有音频导入', async () => {
     const wav = path.join(FX, 'audio/speech-en.wav')
     const hashBefore = sha256(wav)
@@ -485,7 +486,7 @@ export async function runCases(): Promise<CaseResult[]> {
 
   await expect('MEDIA-08', 'MEDIA', '首次模型未就绪', async () => {
     try {
-      await sys('media.transcribe', { path: path.join(FX, 'audio/speech-en.wav'), language: 'auto' })
+      await sys('media.transcribe', { path: mediaFixture('audio/speech-en.wav'), language: 'auto' })
       return '转写模型已配置并成功（跳过未就绪路径）'
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -504,7 +505,7 @@ export async function runCases(): Promise<CaseResult[]> {
         // 需 ASR key
         const hasAsr = await (async () => {
           try {
-            await sys('media.transcribe', { path: path.join(FX, 'audio/silence-3s.wav') })
+            await sys('media.transcribe', { path: mediaFixture('audio/silence-3s.wav') })
             return true
           } catch (e) {
             return !(e instanceof Error && e.message.includes('未配置'))
@@ -512,7 +513,7 @@ export async function runCases(): Promise<CaseResult[]> {
         })()
         if (!hasAsr) throw new Error('未配置 ASR（设置 → 媒体）')
       }
-      const r = await sys('media.transcribe', { path: path.join(FX, file as string), language: 'auto', createNote: true })
+      const r = await sys('media.transcribe', { path: mediaFixture(file as string), language: 'auto', createNote: true })
       const text = String(r.text ?? '')
       if (id === 'MEDIA-02') {
         const ok = ['orion', 'seventeen', '120', 'january', '2027'].filter((k) => text.toLowerCase().includes(k))
@@ -533,12 +534,12 @@ export async function runCases(): Promise<CaseResult[]> {
   })
 
   await expect('MEDIA-07', 'MEDIA', 'OCR清晰及旋转图', async () => {
-    const r = await sys('media.ocr', { path: path.join(FX, 'images/ocr-clean.png') })
+    const r = await sys('media.ocr', { path: mediaFixture('images/ocr-clean.png') })
     const text = r.text as string
     const hits = oracle.ocr_expected.filter((k) => text.includes(k))
     if (hits.length < 3) throw new Error(`OCR 关键词命中不足 ${hits.length}/5：${text.slice(0, 150)}`)
     try {
-      const r2 = await sys('media.ocr', { path: path.join(FX, 'images/ocr-rotated.png') })
+      const r2 = await sys('media.ocr', { path: mediaFixture('images/ocr-rotated.png') })
       return `清晰图 ${hits.length}/5 命中（引擎 ${r.engine}）；旋转图已运行并记录差异（${String(r2.text).trim().slice(0, 40)}…）`
     } catch {
       return `清晰图 ${hits.length}/5 命中；旋转图引擎失败已记录`

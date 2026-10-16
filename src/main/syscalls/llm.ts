@@ -1,30 +1,26 @@
+import {summarize,cancelSummary,startSummaryBatch,cancelSummaryBatch,relatedNotes} from '../services/summaries'
 import path from 'node:path'
 import fs from 'node:fs'
 import crypto from 'node:crypto'
 import { z } from 'zod'
-import { register } from './registry'
+import { register, invokeSys } from './registry'
 import { getWorkspacePath } from './app'
 import { getDb } from '../db/client'
-import { resolveModel, getProvider } from '../providers/store'
+import {backgroundText} from '../providers/background'
+import {resolveWorkspacePath} from '../security/paths'
 
 /** llm 域（单次调用/决策）+ chart 域（Vega-Lite→SVG）+ notes.summarize（DEVELOPMENT.md §6.4/§6.5） */
 
-async function oneShot(role: 'fast' | 'expert', system: string, user: string, timeoutMs = 60_000): Promise<string> {
-  const { providerId, model } = resolveModel(role)
-  const provider = getProvider(providerId)
-  let out = ''
-  const result = await provider.stream(
-    { model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], signal: AbortSignal.timeout(timeoutMs) },
-    (e) => {
-      if (e.type === 'text') out += e.delta
-    }
-  )
-  if (result.finishReason === 'length') throw new Error('模型输出被截断，请缩短输入或调整模型')
-  return out
+async function oneShot(_legacyRole: 'fast' | 'expert', system: string, user: string, timeoutMs = 60_000): Promise<string> {
+  return backgroundText(system,user,AbortSignal.timeout(timeoutMs))
 }
 
 export function registerLlmDomain(): void {
   register('llm', {
+    summarize_cancel:{schema:z.object({noteId:z.string().min(1)}),handler:async(p:{noteId:string})=>{cancelSummary(p.noteId);return {ok:true}}},
+    summarize_batch_start:{schema:z.object({filter:z.object({collectionId:z.string().optional(),favorite:z.boolean().optional(),pinned:z.boolean().optional(),later:z.boolean().optional(),sources:z.array(z.string()).max(30).optional(),modifiedFrom:z.number().optional(),modifiedTo:z.number().optional()}).optional(),query:z.string().max(200).optional(),searchMode:z.enum(['fts','text']).optional()}),handler:async(p:{filter?:import('../db/repos/notes').ListFilter;query?:string;searchMode?:'fts'|'text'},ctx)=>startSummaryBatch(p.filter??{},ctx,p)},
+    summarize_batch_cancel:{schema:z.object({batchId:z.string()}),handler:async(p:{batchId:string})=>{cancelSummaryBatch(p.batchId);return {ok:true}}},
+    summarize: {schema:z.object({noteId:z.string().min(1)}),handler:async(p,ctx)=>{const r=await invokeSys('notes.summarize',p,ctx);if(!r.ok)throw new Error(r.error.message);return r.data}},
     complete: {
       schema: z.object({
         prompt: z.string().optional(),
@@ -77,32 +73,7 @@ export function registerLlmDomain(): void {
   })
 
   register('notes', {
-    summarize: {
-      schema: z.object({ noteId: z.string().min(1) }),
-      handler: async (p: { noteId: string }, ctx) => {
-        const row = getDb().prepare('SELECT title, relative_path FROM notes WHERE note_id = ?').get(p.noteId) as
-          | { title: string; relative_path: string }
-          | undefined
-        if (!row) throw new Error(`笔记不存在: ${p.noteId}`)
-        const body = fs.readFileSync(path.join(getWorkspacePath(), row.relative_path), 'utf-8').slice(0, 12_000)
-        const out = await oneShot(
-          'fast',
-          '为笔记生成摘要。只输出 JSON：{"summary":"120字内摘要","keywords":["关键词"],"topic":"主题"}',
-          `# ${row.title}\n\n${body}`,
-          90_000
-        )
-        const m = /\{[\s\S]*\}/.exec(out)
-        if (!m) throw new Error('模型输出无法解析')
-        const parsed = JSON.parse(m[0]) as { summary?: string; keywords?: string[]; topic?: string }
-        getDb()
-          .prepare('UPDATE notes SET summary=?, keywords=?, topic=?, processed=1, accessed_at=? WHERE note_id=?')
-          .run(parsed.summary ?? '', JSON.stringify(parsed.keywords ?? []), parsed.topic ?? '', Date.now(), p.noteId)
-        // 更新 FTS（summary/keywords 变化）
-        const { upsertFts } = await import('../db/repos/notes')
-        upsertFts(p.noteId)
-        ctx.emit('notes.changed', { kind: 'summarize', noteId: p.noteId })
-        return { summary: parsed.summary ?? '', keywords: parsed.keywords ?? [], topic: parsed.topic ?? '' }
-      }
-    }
+    related:{schema:z.object({noteId:z.string().min(1),limit:z.number().int().min(1).max(10).default(5)}),handler:async(p:{noteId:string;limit:number})=>relatedNotes(p.noteId,p.limit)},
+    summarize:{schema:z.object({noteId:z.string().min(1)}),handler:async(p:{noteId:string},ctx)=>summarize(p.noteId,ctx,ctx.signal)}
   })
 }

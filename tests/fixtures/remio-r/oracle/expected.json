@@ -1,0 +1,79 @@
+{
+  "scope": "oracle 目录不可导入、不可监控、不可作为引用；只由执行器读取",
+  "citation": [
+    {
+      "id": "CQ01",
+      "question": "北辰计划由谁负责？",
+      "answer": "周岚",
+      "sourceFile": "notes/cite-01_北辰计划.md",
+      "marker": "CITE-F01",
+      "distractor": "notes/cite-03_南岭计划.md"
+    },
+    {
+      "id": "CQ02",
+      "question": "北辰计划什么时候上线？",
+      "answer": "2027年3月18日",
+      "sourceFile": "notes/cite-01_北辰计划.md",
+      "marker": "CITE-F02"
+    },
+    {
+      "id": "CQ03",
+      "question": "北辰计划登记了哪些风险？",
+      "answer": [
+        "供应商延期",
+        "数据迁移",
+        "合规审查"
+      ],
+      "sourceFile": "notes/cite-02_北辰风险.md",
+      "marker": "CITE-F04"
+    },
+    {
+      "id": "CQ04",
+      "question": "北辰计划的实际利润是多少？",
+      "answer": "资料中没有利润数据，应说明不足且不给出来源编号",
+      "sourceFile": null,
+      "marker": null
+    }
+  ],
+  "longRefBudget": {
+    "perNote": 8000,
+    "total": 24000,
+    "mustContain": [
+      "REF1-AT-0100",
+      "REF1-AT-7900"
+    ],
+    "mustNotContain": [
+      "REF1-AT-8100",
+      "REF1-AT-9500"
+    ]
+  },
+  "xlsx": {
+    "sheets": [
+      {
+        "name": "订单",
+        "rows": 601,
+        "cols": 6
+      },
+      {
+        "name": "汇总",
+        "rows": 5,
+        "cols": 2
+      }
+    ],
+    "charBudget": 20000
+  },
+  "mcpRanking": {
+    "query": "export",
+    "expectedOrder": [
+      "export",
+      "export_csv",
+      "bulk_export_jobs",
+      "archive_records"
+    ]
+  },
+  "ocrScannedPdf": [
+    "ORION-17",
+    "OCR_MARKER_742"
+  ],
+  "ocrNote": "扫描 PDF 的期望文字取自 tests/fixtures/work 的 ocr_expected，若该数据集更新需同步"
+}

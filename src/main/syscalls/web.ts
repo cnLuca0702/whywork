@@ -1,3 +1,4 @@
+import {routeSearch,type SearchMode} from '../services/search-routing'
 import { getSetting } from './settings'
 import { z } from 'zod'
 import { register } from './registry'
@@ -58,6 +59,12 @@ async function ddgSearch(query: string, count: number): Promise<SearchItem[]> {
 
 export function registerWebDomain(): void {
   register('web', {
+    get_media:{schema:z.object({url:z.url()}),handler:async(p:{url:string},ctx)=>{const {addMediaUrls}=await import('../services/media-jobs');return addMediaUrls([p.url],ctx)}},
+    verify_key:{schema:z.object({engine:z.enum(['brave','tavily'])}),handler:async(p:{engine:'brave'|'tavily'},ctx)=>{
+      if(ctx.source==='agent')throw new Error('验证密钥仅由用户触发')
+      const key=getSetting(`search.${p.engine}Key`);if(!key)throw new Error('请先保存密钥')
+      await (p.engine==='brave'?braveSearch:tavilySearch)('connection test',1,key);return {connected:true}
+    }},
     search: {
       schema: z.object({
         query: z.string().min(1),
@@ -65,29 +72,12 @@ export function registerWebDomain(): void {
         freshness: z.enum(['pd', 'pw', 'pm', 'py']).optional()
       }),
       handler: async (p: { query: string; count: number; freshness?: 'pd' | 'pw' | 'pm' | 'py' }) => {
-        const errors: string[] = []
-        const brave = getSetting('search.braveKey')
-        if (brave) {
-          try {
-            return { engine: 'brave', items: await braveSearch(p.query, p.count, brave) }
-          } catch (e) {
-            errors.push(`brave: ${e instanceof Error ? e.message : String(e)}`)
-          }
-        }
-        const tavily = getSetting('search.tavilyKey')
-        if (tavily) {
-          try {
-            return { engine: 'tavily', items: await tavilySearch(p.query, p.count, tavily) }
-          } catch (e) {
-            errors.push(`tavily: ${e instanceof Error ? e.message : String(e)}`)
-          }
-        }
-        try {
-          return { engine: 'duckduckgo', items: await ddgSearch(p.query, p.count) }
-        } catch (e) {
-          errors.push(`duckduckgo: ${e instanceof Error ? e.message : String(e)}`)
-          throw new Error(`搜索失败：${errors.join('; ')}`)
-        }
+        const brave=getSetting('search.braveKey'),tavily=getSetting('search.tavilyKey')
+        return routeSearch((getSetting('search.mode')??'basic') as SearchMode,[
+          {name:'duckduckgo',run:()=>ddgSearch(p.query,p.count)},
+          ...(brave?[{name:'brave',run:()=>braveSearch(p.query,p.count,brave)}]:[]),
+          ...(tavily?[{name:'tavily',run:()=>tavilySearch(p.query,p.count,tavily)}]:[])
+        ],p.count)
       }
     },
 

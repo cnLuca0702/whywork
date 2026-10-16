@@ -11,6 +11,8 @@ export interface SysError {
     | 'NETWORK_ERROR'
     | 'NO_PROVIDER'
     | 'ABORTED'
+    | 'WATCH_DUPLICATE'
+    | 'WATCH_COVERED'
     | 'INTERNAL'
   message: string
 }

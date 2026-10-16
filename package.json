@@ -11,6 +11,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "check:core": "electron out/main/index.js --core-check",
+    "check:ui": "node scripts/ui-capture.cjs",
     "check:extended": "electron out/main/index.js --extended-check",
     "check:cases": "electron out/main/index.js --run-cases",
     "pack:mac": "electron-builder --mac --dir --config electron-builder.config.cjs",
@@ -19,12 +20,15 @@
     "check:browser": "electron out/main/index.js --browser-check",
     "check:recovery": "node scripts/check-recovery.cjs",
     "build:share": "node scripts/build-share.cjs",
-    "check:share": "node scripts/check-share.cjs"
+    "check:share": "node scripts/check-share.cjs",
+    "prepare:ocr": "node scripts/prepare-ocr.cjs",
+    "build:calendar": "node scripts/build-calendar.cjs"
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@mozilla/readability": "^0.6.0",
+    "@napi-rs/canvas": "^1.0.11",
     "@univerjs/preset-sheets-core": "^1.0.4",
     "@univerjs/presets": "^1.0.4",
     "antd": "^5.25.0",
@@ -34,6 +38,7 @@
     "dompurify": "^3.4.17",
     "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.11.2",
+    "highlight.js": "^11.12.0",
     "imapflow": "^2.4.2",
     "jszip": "^3.10.2",
     "katex": "^0.19.0",

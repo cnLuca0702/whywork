@@ -29,3 +29,17 @@ it('bounds candidate results and reports truncation',async()=>{
  const root=await temp();for(let i=0;i<5;i++)await fs.writeFile(path.join(root,`test-${i}.txt`),'x')
  const r=await(await CandidateScope.create(root)).find('test',new Set(),2);expect(r.items).toHaveLength(2);expect(r.truncated).toBe(true)
 })
+it('matches CJK filenames by every term and ignores unsupported extensions',async()=>{
+ const root=await temp();await fs.writeFile(path.join(root,'青禾预算.md'),'x');await fs.writeFile(path.join(root,'青禾预算.exe'),'x');await fs.writeFile(path.join(root,'青禾 报告.txt'),'x')
+ const r=await(await CandidateScope.create(root)).find('青禾 预算',new Set())
+ expect(r.items.map(x=>x.name)).toEqual(['青禾预算.md'])
+})
+it('matches filenames case-insensitively including upper-case extensions',async()=>{
+ const root=await temp();await fs.writeFile(path.join(root,'Quarterly-Report.MD'),'x')
+ expect((await(await CandidateScope.create(root)).find('quarterly',new Set())).items.map(x=>x.name)).toEqual(['Quarterly-Report.MD'])
+})
+it('skips files already known to the library so they are not offered twice',async()=>{
+ const root=await temp();await fs.writeFile(path.join(root,'known-note.md'),'x')
+ const r=await(await CandidateScope.create(root)).find('known',new Set([path.join(root,'known-note.md')]))
+ expect(r.items).toEqual([])
+})

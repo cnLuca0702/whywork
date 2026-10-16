@@ -10,6 +10,7 @@ export function registerViewGuard(guard:()=>Promise<boolean>):()=>void {
 }
 
 interface UiState {
+  citationSnippet:string|null
   view: View
   filter: NoteFilter
   collectionId: string | null
@@ -27,6 +28,7 @@ interface UiState {
 }
 
 export const useUiStore = create<UiState>((set,get) => ({
+  citationSnippet:null,
   view: 'notes',
   filter: 'all',
   collectionId: null,
@@ -47,5 +49,5 @@ export const useUiStore = create<UiState>((set,get) => ({
   setFilter: (filter) => set({ filter, collectionId: null, activeNoteId: null,search:'' }),
   setCollection: (collectionId) => set({ collectionId, filter: 'all', activeNoteId: null,search:'' }),
   setSearch: (search) => set({ search }),
-  setActiveNote: (activeNoteId) => set({ activeNoteId })
+  setActiveNote: (activeNoteId) => set({ activeNoteId,citationSnippet:null })
 }))

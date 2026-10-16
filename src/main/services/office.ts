@@ -87,14 +87,16 @@ export async function createDocx(title:string,markdown:string):Promise<string> {
   const relativePath=path.join('resources','office',crypto.randomUUID()+'.docx'),target=resolveWorkspacePath(relativePath)
   fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,data);return relativePath
 }
-export async function createSlides(title:string,slides:{title:string;bullets:string[]}[]):Promise<string> {
+export async function createSlides(title:string,slides:{title:string;bullets:string[]}[],theme:'blue'|'forest'|'ink'='blue'):Promise<string> {
   const {default:PptxGenJS}=await import('pptxgenjs'),deck=new PptxGenJS()
   deck.layout='LAYOUT_WIDE';deck.author='WhyWork';deck.subject=title;deck.title=title;
-  deck.theme={headFontFace:'PingFang SC',bodyFontFace:'PingFang SC'}
+  const colors={blue:{background:'F7F9FF',heading:'1E3A8A',text:'1F2937'},forest:{background:'F3FAF5',heading:'166534',text:'173B28'},ink:{background:'20242A',heading:'F3F4F6',text:'E5E7EB'}}[theme]
+  const font=process.platform==='darwin'?'PingFang SC':process.platform==='win32'?'Microsoft YaHei':'Noto Sans CJK SC'
+  deck.theme={headFontFace:font,bodyFontFace:font}
   for(const item of slides) {
-    const slide=deck.addSlide();slide.background={color:'F7F9FF'}
-    slide.addText(item.title,{x:0.7,y:0.5,w:12,h:0.7,fontSize:28,bold:true,color:'1E3A8A',breakLine:false})
-    slide.addText(item.bullets.map(text=>({text,options:{bullet:{indent:20},breakLine:true}})),{x:0.9,y:1.6,w:11.6,h:4.8,fontSize:20,color:'1F2937',paraSpaceAfter:14,fit:'shrink'})
+    const slide=deck.addSlide();slide.background={color:colors.background}
+    slide.addText(item.title,{x:0.7,y:0.5,w:12,h:0.7,fontSize:28,bold:true,color:colors.heading,breakLine:false})
+    slide.addText(item.bullets.map(text=>({text,options:{bullet:{indent:20},breakLine:true}})),{x:0.9,y:1.6,w:11.6,h:4.8,fontSize:20,color:colors.text,paraSpaceAfter:14,fit:'shrink'})
     slide.addText('WhyWork',{x:11.5,y:7,w:1,h:0.2,fontSize:9,color:'64748B'})
   }
   const relativePath=path.join('resources','office',crypto.randomUUID()+'.pptx'),target=resolveWorkspacePath(relativePath)

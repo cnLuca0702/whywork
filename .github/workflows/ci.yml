@@ -1,0 +1,51 @@
+name: Desktop regression
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/.electron-gyp
+            ~/.cache/node-gyp
+          key: ${{ runner.os }}-${{ runner.arch }}-native-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run typecheck
+      # Vitest uses Node, while the desktop checks use Electron's native ABI.
+      - run: npm rebuild better-sqlite3 --runtime=node
+      - run: npm run prepare:ocr
+      - run: npm test
+      - run: npx electron-rebuild -f -w better-sqlite3
+      - run: npm run build
+      - run: npm run build:calendar
+      - run: npx electron out/main/index.js --smoke-test
+      - run: npm run check:core
+      - run: npx electron out/main/index.js --model-check
+      - run: npm run check:cases
+      - run: npm run check:ui
+      - run: node tests/acceptance/remio-r/run.cjs --level=AUTO-API,AUTO-UI
+      - run: node tests/acceptance/remio-r/run.cjs --level=AUTO-UI --theme=dark
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-${{ github.sha }}
+          path: |
+            tests/report.json
+            release/verification/ui/
+            release/verification/remio-r/

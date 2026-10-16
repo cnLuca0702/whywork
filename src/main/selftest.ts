@@ -163,6 +163,15 @@ export async function runSelftest(): Promise<SmokeResult[]> {
     return 'chat 域 + syscall 注册 OK'
   })
 
+  await check('本地正文检索与录音入口回归',async()=>{
+    const note=await sys('notes.create',{title:'SELFTEST-检索',body:'独立本地正文词组'})
+    const found=await sys('notes.list',{query:'正文词组',searchMode:'text'})
+    if(!found.items.some((n:{noteId:string})=>n.noteId===note.noteId))throw new Error('本地正文检索未命中')
+    const capability=await sys('media.recording_capabilities'),pending=await sys('media.pending_transcriptions')
+    if(typeof capability.isolatedUI!=='boolean'||typeof pending.total!=='number')throw new Error('录音入口契约错误')
+    return '本地正文检索/录音能力/待转写契约 OK；录制状态机另由单测验证'
+  })
+
   // 清理：硬删行 + 文件 + 恢复原工作区
   try {
     const { getDb } = await import('./db/client')

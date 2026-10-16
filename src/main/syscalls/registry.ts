@@ -5,6 +5,8 @@ import type { SysResult } from '../../shared/types'
 /** syscall 注册表：单一入口、zod 契约校验（docs/DEVELOPMENT.md §2.2/§6） */
 export interface SysContext {
   chatId?: string
+  sources?: import('../agent/sources').SourceRegistry
+  useKnowledge?: boolean
   source?: 'agent' | 'user'
   signal?: AbortSignal
   win: () => BrowserWindow | null
@@ -60,6 +62,12 @@ export async function invokeSys(action: string, payload: unknown, ctx: SysContex
       return { ok: false, error: { code: 'NOT_FOUND', message } }
     }
     console.error(`[sys:${action}]`, err)
-    return { ok: false, error: { code: 'INTERNAL', message } }
+    return { ok: false, error: { code: code==='WATCH_DUPLICATE'||code==='WATCH_COVERED'?code:'INTERNAL', message } }
   }
+}
+
+export function validateActionPayload(action:string,payload:unknown):unknown{
+ const definition=actions.get(action)
+ if(!definition)throw new Error('未知动作')
+ return definition.schema?definition.schema.parse(payload):payload
 }

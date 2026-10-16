@@ -1,3 +1,4 @@
+import {syncImageResources,ocrImages} from '../../services/ocr-index'
 import fs from 'node:fs'
 import { wsJoin } from '../notes-file'
 import { snapshotBeforeWrite } from '../../agent/vault'
@@ -49,6 +50,12 @@ export interface ListFilter {
   deleted?: boolean
   type?: string
   source?: string
+  excludeNoteId?:string
+  sources?: string[]
+  types?: string[]
+  modifiedFrom?: number
+  modifiedTo?: number
+  titleQuery?: string
 }
 
 function d(): Database.Database {
@@ -61,7 +68,7 @@ export function newId(): string {
 
 export function listNotes(
   filter: ListFilter,
-  sort: 'modified' | 'created' | 'accessed' | 'title',
+  sort: 'modified' | 'created' | 'accessed' | 'title' | 'relevance',
   limit: number,
   offset: number,
   query?: string
@@ -73,6 +80,8 @@ export function listNotes(
   } else {
     where.push('deleted_at IS NULL')
   }
+  if(filter.titleQuery?.trim()){where.push("n.title LIKE @titleQuery ESCAPE '\\'");params.titleQuery='%'+filter.titleQuery.trim().replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_')+'%'}
+  if(filter.excludeNoteId){where.push('n.note_id != @excludeNoteId');params.excludeNoteId=filter.excludeNoteId}
   if (filter.favorite !== undefined) {
     where.push('favorite = @favorite')
     params.favorite = filter.favorite ? 1 : 0
@@ -97,12 +106,20 @@ export function listNotes(
     where.push('note_source = @source')
     params.source = filter.source
   }
+  for(const [key,column] of [['sources','note_source'],['types','note_type']] as const){
+    const values=filter[key]
+    if(values?.length){where.push(`${column} IN (${values.map((value,index)=>{const k=key+index;params[k]=value;return '@'+k}).join(',')})`)}
+  }
+  if(filter.modifiedFrom!==undefined){where.push('modified_at >= @modifiedFrom');params.modifiedFrom=filter.modifiedFrom}
+  if(filter.modifiedTo!==undefined){where.push('modified_at < @modifiedTo');params.modifiedTo=filter.modifiedTo}
   if (query?.trim()) {
     const term=query.trim()
-    params.match='"'+term.replaceAll('"','""')+'"'
+    // Indexed text is CJK-padded, so the phrase and body LIKE must use the padded query too.
+    params.match='"'+cjkPad(term).replaceAll('"','""')+'"'
     params.pattern='%'+term.replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_')+'%'
+    params.bodyPattern='%'+cjkPad(term).replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_')+'%'
     where.push(`(n.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH @match)
-      OR n.rowid IN (SELECT rowid FROM notes_fts WHERE body LIKE @pattern ESCAPE '\\')
+      OR n.rowid IN (SELECT rowid FROM notes_fts WHERE body LIKE @bodyPattern ESCAPE '\\')
       OR n.title LIKE @pattern ESCAPE '\\' OR n.relative_path LIKE @pattern ESCAPE '\\')`)
   }
   let from = 'notes n'
@@ -112,13 +129,16 @@ export function listNotes(
     params.collectionId = filter.collectionId
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
-  const sortCol = { modified: 'modified_at', created: 'created_at', accessed: 'accessed_at', title: 'title' }[sort]
+  const sortCol = { modified: 'modified_at', created: 'created_at', accessed: 'accessed_at', title: 'title', relevance:'modified_at' }[sort]
+  const order=sort==='relevance'&&query?.trim()
+    ? 'COALESCE((SELECT rank FROM notes_fts WHERE notes_fts.rowid=n.rowid AND notes_fts MATCH @match),1e9) ASC'
+    : `n.${sortCol} ${sort==='title'?'ASC':'DESC'}`
   const total = (
     d().prepare(`SELECT COUNT(*) c FROM ${from} ${whereSql}`).get(params) as { c: number }
   ).c
   const items = d()
     .prepare(
-      `SELECT n.* FROM ${from} ${whereSql} ORDER BY n.pinned DESC, n.${sortCol} ${sort === 'title' ? 'ASC' : 'DESC'}, n.note_id ASC LIMIT @limit OFFSET @offset`
+      `SELECT n.* FROM ${from} ${whereSql} ORDER BY ${sort==='relevance'?'':'n.pinned DESC, '}${order}, n.note_id ASC LIMIT @limit OFFSET @offset`
     )
     .all({ ...params, limit, offset }) as NoteRow[]
   return { items, total }
@@ -250,6 +270,10 @@ export function setNoteStatus(
     params.later = patch.later ? 1 : 0
   }
   if (sets.length === 0) return
+  const note=getNote(noteId)
+  if(!note)throw new Error('笔记不存在')
+  if((['favorite','pinned','later'] as const).every(k=>patch[k]===undefined||Boolean(note[k])===patch[k]))return
+  snapshotBeforeWrite(note.relative_path,'modify',{kind:'note',detail:{noteId}})
   sets.push('accessed_at=@now')
   d().prepare(`UPDATE notes SET ${sets.join(', ')} WHERE note_id=@noteId`).run(params)
 }
@@ -287,6 +311,11 @@ export function cjkPad(s: string): string {
   return s.replace(/([\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af])(?=[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af])/g, '$1 ')
 }
 
+/** 去掉索引时为 CJK 插入的分隔空格，仅用于展示片段 */
+export function cjkUnpad(s: string): string {
+  return s.replace(/([㐀-䶿一-鿿぀-ヿ가-힯]) (?=[㐀-䶿一-鿿぀-ヿ가-힯])/g, '$1')
+}
+
 export function upsertFts(noteId: string): void {
   const note = getNote(noteId)
   if (!note) return
@@ -296,6 +325,9 @@ export function upsertFts(noteId: string): void {
   } catch {
     body = ''
   }
+  syncImageResources(noteId,body)
+  const imageText=ocrImages(noteId).map(i=>i.ocrText).filter(Boolean).join('\n')
+  if(imageText)body+='\n图片文字：\n'+imageText
   const keywords = note.keywords ?? ''
   removeFts(noteId)
   d()
@@ -337,26 +369,33 @@ export function searchNotes(query: string, limit: number, opts: { excludeNoteId?
          ORDER BY rank LIMIT ?`
       )
       .all(match, opts.excludeNoteId ?? '', limit) as SearchHit[]
-    for (const r of rows) r.source = 'fts'
+    for (const r of rows) {
+      r.source = 'fts'
+      r.snippet = cjkUnpad(r.snippet)
+    }
     out.push(...rows)
   } catch {
     /* 非法 MATCH 语法走回退 */
   }
   // unicode61 does not segment CJK words. Search indexed body as a labelled
   // substring fallback, then append filename candidates without hiding FTS hits.
-  const pattern = `%${query.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_')}%`
+  const escapeLike = (s: string) => `%${s.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_')}%`
+  const pattern = escapeLike(query)
+  // Body text is stored CJK-padded; compare it against the padded query.
+  const bodyNeedle = cjkPad(query)
+  const bodyPattern = escapeLike(bodyNeedle)
   const rows = d().prepare(`SELECT n.note_id AS noteId, n.title, f.body AS body,
     n.relative_path AS relativePath FROM notes n JOIN notes_fts f ON f.rowid=n.rowid
     WHERE n.deleted_at IS NULL AND n.note_id != COALESCE(?, '')
     AND (f.body LIKE ? ESCAPE '\\' OR n.title LIKE ? ESCAPE '\\' OR n.relative_path LIKE ? ESCAPE '\\')
-    ORDER BY n.modified_at DESC LIMIT ?`).all(opts.excludeNoteId ?? '', pattern, pattern, pattern, limit) as
+    ORDER BY n.modified_at DESC LIMIT ?`).all(opts.excludeNoteId ?? '', bodyPattern, pattern, pattern, limit) as
     {noteId:string;title:string;body:string;relativePath:string}[]
   const seen = new Set(out.map(h => h.noteId))
   for (const r of rows) {
     if (seen.has(r.noteId) || out.length >= limit) continue
-    const at = r.body.toLocaleLowerCase().indexOf(query.toLocaleLowerCase())
+    const at = r.body.toLocaleLowerCase().indexOf(bodyNeedle.toLocaleLowerCase())
     out.push({ noteId:r.noteId, title:r.title, rank:0,
-      snippet: at >= 0 ? r.body.slice(Math.max(0, at-50), at+query.length+100) : '',
+      snippet: at >= 0 ? cjkUnpad(r.body.slice(Math.max(0, at-50), at+bodyNeedle.length+100)) : '',
       source: at >= 0 ? 'like' : 'filename' })
     seen.add(r.noteId)
   }
@@ -462,6 +501,9 @@ export function renameCollection(collectionId: string, title: string): void {
 }
 
 export function addNoteToCollection(noteId: string, collectionId: string): void {
+  const note=getNote(noteId);if(!note)throw new Error('笔记不存在')
+  if(d().prepare('SELECT 1 FROM note_collections WHERE note_id=? AND collection_id=?').get(noteId,collectionId))return
+  snapshotBeforeWrite(note.relative_path,'modify',{kind:'note',detail:{noteId,relation:true}})
   d()
     .prepare(
       'INSERT OR IGNORE INTO note_collections (note_id, collection_id, added_at) VALUES (?,?,?)'
@@ -470,6 +512,9 @@ export function addNoteToCollection(noteId: string, collectionId: string): void 
 }
 
 export function removeNoteFromCollection(noteId: string, collectionId: string): void {
+  const note=getNote(noteId);if(!note)throw new Error('笔记不存在')
+  if(!d().prepare('SELECT 1 FROM note_collections WHERE note_id=? AND collection_id=?').get(noteId,collectionId))return
+  snapshotBeforeWrite(note.relative_path,'modify',{kind:'note',detail:{noteId,relation:true}})
   d()
     .prepare('DELETE FROM note_collections WHERE note_id = ? AND collection_id = ?')
     .run(noteId, collectionId)
