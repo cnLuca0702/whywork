@@ -1,9 +1,9 @@
-import {afterEach,describe,expect,it} from 'vitest'
+import {afterAll,afterEach,beforeAll,describe,expect,it} from 'vitest'
 import {agendaRowsForRange,calendarSearchReducer,type CalendarSearchState} from '../src/renderer/src/components/calendarAgenda'
 
-/** 本地时区的“某天某时刻”时间戳 */
+/** 固定基准时间的“某天某时刻”时间戳（2026-06-15 周一，避免真实日期依赖与夏令时跳变） */
 function at(dayOffset:number,hour:number,minute=0):number{
- const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+dayOffset);d.setHours(hour,minute,0,0);return d.getTime()
+ const d=new Date(2026,5,15,0,0,0,0);d.setDate(d.getDate()+dayOffset);d.setHours(hour,minute,0,0);return d.getTime()
 }
 const day0=at(0,0),dayKeyOf=(ts:number)=>{const d=new Date(ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 
@@ -86,5 +86,71 @@ describe('calendarSearchReducer 搜索提交状态机（复检 P2-1）',()=>{
   let state=s('REVIEW今天','REVIEW今天')
   state=calendarSearchReducer(state,{type:'change',value:''})
   expect(state).toEqual(s('',''))
+ })
+})
+
+describe('agendaRowsForRange 夏令时（DST）回归测试', () => {
+ const origTz = process.env.TZ
+ beforeAll(() => {
+  process.env.TZ = 'America/New_York'
+ })
+ afterAll(() => {
+  if (origTz !== undefined) process.env.TZ = origTz
+  else delete process.env.TZ
+ })
+ const parseNy = (s: string) => new Date(s).getTime()
+
+ it('春季夏令时（23小时日）：次日 00:30 点事件归入次日，不重复出现在前一天', () => {
+  const from = parseNy('2026-03-08T00:00:00')
+  const to = parseNy('2026-03-10T00:00:00')
+  const eventTime = parseNy('2026-03-09T00:30:00')
+  const rows = agendaRowsForRange([{ eventId: 'DST-SPRING', start: eventTime, end: eventTime }], { from, to })
+  expect(rows).toHaveLength(1)
+  expect(rows[0]!.dayKey).toBe('2026-03-09')
+  expect(rows[0]!.point).toBe(true)
+  expect(rows[0]!.crossDay).toBe(false)
+ })
+
+ it('秋季夏令时（25小时日）：23:30 点事件归入当天，不因 24h 计算空档丢失', () => {
+  const from = parseNy('2026-11-01T00:00:00')
+  const to = parseNy('2026-11-03T00:00:00')
+  const eventTime = parseNy('2026-11-01T23:30:00')
+  const rows = agendaRowsForRange([{ eventId: 'DST-AUTUMN', start: eventTime, end: eventTime }], { from, to })
+  expect(rows).toHaveLength(1)
+  expect(rows[0]!.dayKey).toBe('2026-11-01')
+  expect(rows[0]!.point).toBe(true)
+  expect(rows[0]!.crossDay).toBe(false)
+ })
+
+ it('春季 23 小时自然日全天事件记 allDay 且不跨天', () => {
+  const from = parseNy('2026-03-08T00:00:00')
+  const to = parseNy('2026-03-10T00:00:00')
+  const rows = agendaRowsForRange([{ eventId: 'SPRING-FULL', start: from, end: parseNy('2026-03-09T00:00:00') }], { from, to })
+  expect(rows).toHaveLength(1)
+  expect(rows[0]!.dayKey).toBe('2026-03-08')
+  expect(rows[0]!.allDay).toBe(true)
+  expect(rows[0]!.crossDay).toBe(false)
+ })
+
+ it('秋季 25 小时自然日全天事件记 allDay 且不跨天', () => {
+  const from = parseNy('2026-11-01T00:00:00')
+  const to = parseNy('2026-11-03T00:00:00')
+  const rows = agendaRowsForRange([{ eventId: 'AUTUMN-FULL', start: from, end: parseNy('2026-11-02T00:00:00') }], { from, to })
+  expect(rows).toHaveLength(1)
+  expect(rows[0]!.dayKey).toBe('2026-11-01')
+  expect(rows[0]!.allDay).toBe(true)
+  expect(rows[0]!.crossDay).toBe(false)
+ })
+
+ it('跨越春季 DST 转换点的区间事件跨天裁剪与标记正确', () => {
+  const from = parseNy('2026-03-08T00:00:00')
+  const to = parseNy('2026-03-10T00:00:00')
+  const rows = agendaRowsForRange([{ eventId: 'SPRING-SPAN', start: parseNy('2026-03-08T10:00:00'), end: parseNy('2026-03-09T10:00:00') }], { from, to })
+  expect(rows).toHaveLength(2)
+  expect(rows[0]!.dayKey).toBe('2026-03-08')
+  expect(rows[0]!.crossDay).toBe(true)
+  expect(rows[1]!.dayKey).toBe('2026-03-09')
+  expect(rows[1]!.crossDay).toBe(true)
+  expect(rows[1]!.start).toBe(parseNy('2026-03-09T00:00:00'))
  })
 })

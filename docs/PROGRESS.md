@@ -279,7 +279,31 @@
 ### 2026-10-17 Codex 三轮复检问题修复（U-35 三轮）
 - 复检结论：仍未通过、不推送；两个新 P2 属实（复现脚本 /tmp/whywork-calendar-round3.cjs，日志 .log）。
 - P2-1 未提交草稿清空：antd Input.Search 清空按钮先触发 onSearch('')，旧实现 search() 忽略传入值读取旧 draft 导致错误提交；随后 onChange 的 committed 闭包仍为旧值未覆盖。修复：搜索提交抽为纯函数 calendarSearchReducer——onSearch 一律以 antd 传入的实际 value 提交（trim），onChange 空值无条件将 draft/committed 同时归空；onSearch/onChange 两种到达顺序均收敛（有单测覆盖两种顺序）。
-- P2-2 午夜零时长点事件：半开区间 [start,end) 与当日求交对零宽事件恒为空集，周日内任何一天的 00:00 点事件整组消失。修复：逐日归组抽为纯函数 agendaRowsForRange——点事件（end<=start）显式按 dayStart<=start<dayEnd 归入所在日，区间事件保持半开交集；crossDay 定义改为“内容跨过一个以上自然日”（恰至次日 00:00 的单日全天不再误标跨天）。服务端边界核对：calendar.search 的 SQL（end>from AND start<to）对 from 边界点事件返回、to 边界不返回，与前端半开语义一致。
+- P2-2 午夜零时长点事件：半开区间 [start,end) 与当日求交对零宽事件恒为空集，周日内任何一天的 00:00 点事件整组消失。修复：逐日归组抽为纯函数 agendaRowsForRange——点事件（end<=start）显式按 dayStart<=start<dayEnd 归入所在日，区间事件保持半开交集；crossDay 定义改为“内容跨过一个以上自然日”（恰至次日 00:00 的单日全天不再误标跨天）。更正此前记录：旧服务端 calendar.search 的 SQL 为 end>from AND start<to，对 start=end=from 点事件不满足 end>from，导致今天 00:00 点事件在单日查询丢失（已在第四轮修正）。
 - 可重复自动化断言（Codex 要求）：新增 tests/calendar-agenda.test.ts 11 项——午夜/14:00 点事件归组、跨天裁剪 00:00、全天不误标跨天、上周进行中归周一逐日展开且 dayKey 唯一、范围外/to 边界排除、from 边界点事件归入；reducer 四项（未提交草稿清空双顺序、onSearch 用传入值、onChange 非空不动 committed、已提交清空回归）。
 - 验证：typecheck 0 错；164/164 单测（新增 11）；build；R21 2 PASS/1 MANUAL（release/verification/remio-r/2026-10-17T04-12-16-281Z）；check:ui 20 张亮暗（release/verification/ui/2026-10-17T04-12-24-930Z）；Codex round3 复现脚本原样重跑：clearUnsubmitted overnight 0→1、zeroLength midnightVisible 0→1、committedSwitch/clearCommitted/race(stale 0) 全部符合预期。
 - 未完成不变：macOS 实机验收、新签名包、真实服务 U1~U7、GitHub CI 远程观察。本轮不推送，待复检。
+
+### 2026-10-17 Codex 四轮复检问题修复（antigravity 接手）
+- 接手说明：接手 main @ f532050，工作区保持干净；与独立分支 cnLuca0702/zcode-calendar-comparison 隔离独立开发，不跨目录访问、不共享 ABI/构建产物、不修改原复现脚本。
+- 更正结论：更正第三轮 PROGRESS 与 f532050 提交说明中“end>from AND start<to 会包含from边界点事件”的错误推论——当 start=end=from 时，因 end>from 为假，该点事件在今天单日查询丢失、但在本周查询可查到。
+- P2-1 服务端日历搜索边界与点/区间事件区分（calendar.search）：
+  - 修改 `src/main/syscalls/calendar.ts:44`，SQL 查询条件由 `end>? AND start<?` 改为 `((end > start AND end > ? AND start < ?) OR (end <= start AND start >= ? AND start < ?))`。
+  - 区间事件（end > start）保持半开相交（end > from AND start < to）；点事件（end <= start）按 start >= from AND start < to 严格过滤，与前端 point 判定规则保持一致。
+  - 新增真实 `calendar.search` syscall 集成测试（`tests/calendar.test.ts`）：覆盖半开区间 [from, to) 边界（包含 from 边界点事件/倒置点事件/相交区间事件，排除 to 边界点事件/范围外点事件/止于 from 的区间事件）、第四轮复现用例回归、start/end 字符串与关键词过滤。
+- P2-2 夏令时（DST）跨天与自然日边界空档/重叠修复（calendarAgenda.ts）：
+  - 移除固定 24 小时常量 `DAY = 86400000`；
+  - `startDayEnd`、`crossDay` 及逐日交集中的 `dayEnd` 改用 `day.add(1, 'day').valueOf()` 按下一个本地自然日零点计算；
+  - 彻底消除夏令时转换日（如春季 23h、秋季 25h）导致的日边界重叠与空档，确保全天事件 `allDay` 准确，每个事件归入唯一正确的自然日；
+  - `tests/calendar-agenda.test.ts` 消除真实当前日期依赖（基准固定为 2026-06-15 周一），并增补 5 项 America/New_York 春/秋 DST 回归测试（2026-03-09 00:30 点事件单日归组不重复、2026-11-01 23:30 点事件不丢失、春/秋全天事件 allDay 判定、跨越 DST 转换点的区间事件跨天标记）。
+- 验证：
+  - `npm run typecheck` 0 错；
+  - 单元测试 36 文件 172 项全部通过（新增 8 项测试：calendar.test.ts 3 项集成测试、calendar-agenda.test.ts 5 项 DST 测试）；
+  - `npm run build` 成功（1m 3s）；
+  - 原复现脚本原样重跑全部符合预期：
+    - `TZ=America/New_York node /tmp/whywork-calendar-dst-review.cjs`：2026-03-09 00:30 仅归入 2026-03-09（1行）、2026-11-01 23:30 归入 2026-11-01（1行，不再为0行）；
+    - `node /tmp/whywork-calendar-round4.cjs`：clearUnsubmitted overnight 1、committedSwitch overnight 0、clearCommitted groups ["今天 · 4"]、fromBoundary total 4 包含 REVIEW起点午夜、zeroLength total 5 且 midnightVisible 1、race stale 0 current 1；
+  - R21 验收（`node tests/acceptance/remio-r/run.cjs --only=R21`）：2 PASS / 1 MANUAL（报告 release/verification/remio-r/2026-10-17T04-41-07-130Z）；
+  - `npm run check:ui`：20 张亮暗视图全部 PASS（报告 release/verification/ui/2026-10-17T04-41-19-371Z）。
+- 状态边界：本地提交，仅用于交接比较；不推送 GitHub，等待用户与 Codex 复检；macOS 实机验收、新签名包（D7）、真实服务 U1~U7、远程 CI 仍待外部条件。
+

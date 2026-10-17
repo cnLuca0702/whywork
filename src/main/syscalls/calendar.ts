@@ -41,7 +41,7 @@ export function registerCalendarDomain():void {
     }},
     search:{schema:z.object({query:z.string().max(500).default(''),start:z.iso.date().optional(),end:z.iso.date().optional(),calendarIds:z.array(z.string()).max(100).optional(),sort:z.enum(['startTime','relevance']).optional(),limit:z.number().int().min(1).max(100).default(20),from:z.number().optional(),to:z.number().optional()}).refine(p=>!p.start||!p.end||p.start<p.end,'日期范围必须左小右大'),handler:async(p:{query:string;start?:string;end?:string;calendarIds?:string[];sort?:'startTime'|'relevance';limit:number;from?:number;to?:number})=>{
       tables();const from=p.start?new Date(p.start+'T00:00:00').getTime():p.from??Date.now()-366*86400000,to=p.end?new Date(p.end+'T00:00:00').getTime():p.to??Date.now()+366*86400000
-      const local:Record<string,unknown>[]=(getDb().prepare('SELECT * FROM calendar_events WHERE end>? AND start<?').all(from,to) as Record<string,unknown>[]).map(r=>({...r,calendarId:r.source_id,source:'ics'}))
+      const local:Record<string,unknown>[]=(getDb().prepare('SELECT * FROM calendar_events WHERE ((end > start AND end > ? AND start < ?) OR (end <= start AND start >= ? AND start < ?))').all(from,to,from,to) as Record<string,unknown>[]).map(r=>({...r,calendarId:r.source_id,source:'ics'}))
       let remote:Record<string,unknown>[]=[];let warning:string|undefined
       if(process.platform==='darwin'){try{const state=await systemCalendar('status');if(state.authorization==='authorized')remote=(await systemCalendar('events',from,to)).items??[]}catch{warning='系统日历暂不可用'}}
       const query=p.query.toLowerCase(),score=(r:Record<string,unknown>)=>String(r.title).toLowerCase()===query?3:String(r.title).toLowerCase().includes(query)?2:1
