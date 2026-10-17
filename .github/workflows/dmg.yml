@@ -28,9 +28,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm rebuild better-sqlite3 --runtime=node
+      - run: npm run prepare:ocr
       - run: npm test
       - run: npx electron-rebuild -f -w better-sqlite3
-      - run: npm run prepare:ocr
       - run: npm run build
       - run: npm run check:share
       - run: npm run dist:mac -- --arm64
