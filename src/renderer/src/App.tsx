@@ -5,6 +5,7 @@ import { CloseOutlined, MessageOutlined, ExpandOutlined, CompressOutlined } from
 import Sidebar from './components/Sidebar'
 import ToolRail from './components/ToolRail'
 import ChatPanel from './components/ChatPanel'
+import {RecordingBootstrap} from './components/RecordingControls'
 import StatusBar from './components/StatusBar'
 import NotesView from './views/NotesView'
 import SettingsView from './views/SettingsView'
@@ -12,6 +13,15 @@ import { useUiStore } from './store/ui'
 
 const ToolsView=lazy(()=>import('./views/ToolsView'))
 const RecordView=lazy(()=>import('./views/RecordView'))
+
+const TOOLS_TITLES: Record<string, string> = {
+  capture: '采集',
+  office: '表格与文档',
+  calendar: '日历',
+  mail: '邮件',
+  browser: '网页浏览',
+  pair: '设备绑定'
+}
 
 export default function App() {
   useSysEvent('app.capture_requested', payload => {
@@ -23,15 +33,18 @@ export default function App() {
     const p=payload as {noteId:string};void useUiStore.getState().setView('notes').then(ok=>{if(ok)useUiStore.getState().setActiveNote(p.noteId)})
   })
   const view = useUiStore((s) => s.view)
+  const toolsTab = useUiStore((s) => s.toolsTab)
   const [focusWorkspace, setFocusWorkspace] = useState(false)
+  const panelTitle = view === 'settings' ? '设置' : view === 'tools' ? TOOLS_TITLES[toolsTab] ?? '工具' : view === 'record' ? '录音' : '知识库'
   return (
     <div className="ww-shell">
+      <RecordingBootstrap/>
       <Sidebar />
       <main className={`ww-workspace ${view === 'chat' ? 'is-chat-only' : ''} ${focusWorkspace ? 'is-focused' : ''}`}>
         <section className="ww-surface ww-chat-pane" aria-label="对话工作区"><ChatPanel /></section>
         {view !== 'chat' && <section className="ww-surface ww-resource-pane" aria-label="资料工作区">
           <div className="ww-panel-bar">
-            <span>{view === 'settings' ? '设置' : view === 'tools' ? '工作工具' : view === 'record' ? '录音' : '知识库'}</span>
+            <span>{panelTitle}</span>
             <div className="ww-panel-actions">
               <Button type="text" size="small" icon={<MessageOutlined />} onClick={() => void useUiStore.getState().setView('chat')}>对话</Button>
               <Tooltip title={focusWorkspace ? '并排显示' : '展开工作区'}><Button aria-label={focusWorkspace ? '并排显示' : '展开工作区'} type="text" size="small" icon={focusWorkspace ? <CompressOutlined /> : <ExpandOutlined />} onClick={() => setFocusWorkspace(!focusWorkspace)} /></Tooltip>

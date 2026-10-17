@@ -32,10 +32,10 @@ export default function ToolRail() {
     { key: 'chat', icon: <MessageOutlined />, label: 'AI 问答', active: view === 'chat', onClick: () => void setView('chat') },
     { key: 'record', icon: <AudioOutlined />, label: '录音', active: view === 'record', onClick: () => void setView('record') },
     { key: 'capture', icon: <InboxOutlined />, label: '采集', active: view === 'tools' && toolsTab === 'capture', onClick: () => void setToolsTab('capture') },
-    { key: 'office', icon: <TableOutlined />, label: 'Office 表格', active: view === 'tools' && toolsTab === 'office', onClick: () => void setToolsTab('office') },
+    { key: 'office', icon: <TableOutlined />, label: '表格与文档', active: view === 'tools' && toolsTab === 'office', onClick: () => void setToolsTab('office') },
     { key: 'calendar', icon: <CalendarOutlined />, label: '日历', active: view === 'tools' && toolsTab === 'calendar', onClick: () => void setToolsTab('calendar'), divider: true },
     { key: 'mail', icon: <MailOutlined />, label: '邮件', active: view === 'tools' && toolsTab === 'mail', onClick: () => void setToolsTab('mail') },
-    { key: 'browser', icon: <GlobalOutlined />, label: '动态网页', active: view === 'tools' && toolsTab === 'browser', onClick: () => void setToolsTab('browser') },
+    { key: 'browser', icon: <GlobalOutlined />, label: '网页浏览', active: view === 'tools' && toolsTab === 'browser', onClick: () => void setToolsTab('browser') },
     { key: 'pair', icon: <DeploymentUnitOutlined />, label: '设备绑定', active: view === 'tools' && toolsTab === 'pair', onClick: () => void setToolsTab('pair') }
   ]
 

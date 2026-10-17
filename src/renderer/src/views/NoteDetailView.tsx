@@ -1,9 +1,9 @@
 import RecordingNoteActions from '../components/RecordingNoteActions'
 import NoteInsights from '../components/NoteInsights'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Dropdown, Input, Modal, Select, Spin, Tag, message } from 'antd'
+import { Button, Dropdown, Input, Modal, Select, Spin, Tag, Tooltip, message } from 'antd'
 import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, MoreOutlined, ReadOutlined, StarFilled, StarOutlined } from '@ant-design/icons'
-import { renderMarkdown } from '../markdown/render'
+import { renderMarkdown, formatSnippet } from '../markdown/render'
 import {t} from '../i18n/zh'
 import { sys, useSysEvent } from '../api'
 import { useUiStore } from '../store/ui'
@@ -70,6 +70,7 @@ export default function NoteDetailView() {
   }, [activeNoteId, editing])
 
   const html = useMemo(() => (detail ? renderMarkdown(detail.body) : ''), [detail])
+  const snippetHtml = useMemo(() => (citationSnippet ? formatSnippet(citationSnippet) : ''), [citationSnippet])
 
   useEffect(()=>{
     if(!citationSnippet||!detail||detail.note.noteId!==activeNoteId)return
@@ -112,8 +113,6 @@ export default function NoteDetailView() {
 
   return (
     <div className="ww-note-detail flex h-full flex-col">
-      {!editing&&<RecordingNoteActions key={activeNoteId} noteId={activeNoteId!}/>}
-      {!editing&&<NoteInsights key={activeNoteId} noteId={activeNoteId!}/>}
       <div className="ww-detail-toolbar">
         <Button type="text" size="small" icon={<ArrowLeftOutlined />} onClick={() => setActiveNote(null)}>
           返回
@@ -201,6 +200,14 @@ export default function NoteDetailView() {
         </Dropdown>
       </div>
 
+      {/* 元信息行：来源与位置在此呈现，正文不再混入内部追踪注释（U-03/U-23） */}
+      {!editing&&<div className="ww-note-meta">
+        <span><b>{t('notes.sourceLabel')}</b> {note.noteSource === 'manual' ? t('notes.manualType') : note.noteSource}</span>
+        <span><b>{t('notes.modifiedLabel')}</b> {new Date(note.modifiedAt).toLocaleString()}</span>
+        {collections.length>0&&<span><b>{t('nav.collections')}</b> {collections.map(c=>c.title).join('、')}</span>}
+        <Tooltip title={note.relativePath}><span className="min-w-0 truncate">📄 {note.relativePath}</span></Tooltip>
+      </div>}
+
       {editing ? (
         <div className="min-h-0 flex-1">
           <NoteEditor
@@ -229,8 +236,11 @@ export default function NoteDetailView() {
           }}
         >
           {recordingUrl && <audio key={note.noteId} controls preload="metadata" src={recordingUrl} aria-label="已保存录音" className="mb-4 max-w-full" />}
-          {citationSnippet&&<blockquote><b>{t('chat.sourceSnippet')}</b><p>{citationSnippet}</p></blockquote>}
+          {citationSnippet&&<blockquote className="ww-citation-snippet"><b>{t('chat.sourceSnippet')}</b><p dangerouslySetInnerHTML={{__html:snippetHtml}}/></blockquote>}
           <div ref={previewRef} dangerouslySetInnerHTML={{ __html: html }} />
+          {/* 洞察放到正文之后：先读内容，再做摘要与关联（U-23） */}
+          <RecordingNoteActions key={activeNoteId} noteId={activeNoteId!}/>
+          <NoteInsights key={activeNoteId} noteId={activeNoteId!}/>
         </article>
 
         <aside className="ww-note-links w-48 shrink-0 overflow-y-auto border-l border-gray-200 px-4 py-3 text-sm dark:border-[#2a2a2a] lg:block">

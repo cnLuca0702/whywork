@@ -1,17 +1,20 @@
-import {useEffect,useRef,useState} from 'react'
-import {Button,Input,Modal,Switch,Tag,message} from 'antd'
+import {useEffect,useRef,useState,type ReactNode} from 'react'
+import {Button,Dropdown,Input,Modal,Tag,message} from 'antd'
+import {AudioOutlined,BookOutlined,PaperClipOutlined} from '@ant-design/icons'
 import {sys,useSysEvent} from '../api'
 import {useChatStore} from '../store/chat'
 import {t} from '../i18n/zh'
+import {MicLauncher} from './RecordingControls'
 
-export default function ChatComposer({value,onChange,onSend,disabled,empty}:{value:string;onChange:(v:string)=>void;onSend:()=>void;disabled:boolean;empty:boolean}){
+/** 对话输入区：引用标签 + 文本域 + 统一工具条（附件/录音/引用知识库在左，模型与发送由 right 插槽提供，U-12~U-14） */
+export default function ChatComposer({value,onChange,onSend,disabled,empty,right}:{value:string;onChange:(v:string)=>void;onSend:()=>void;disabled:boolean;empty:boolean;right?:ReactNode}){
  const {noteRefs,skillRefs,useKnowledge}=useChatStore()
  const [query,setQuery]=useState<{kind:'note'|'skill';text:string;start:number;end:number}|null>(null)
  const [items,setItems]=useState<{id:string;title:string}[]>([]),[selected,setSelected]=useState(0),[url,setUrl]=useState(''),[urlOpen,setUrlOpen]=useState(false)
- const [busy,setBusy]=useState(false),[progress,setProgress]=useState('')
- const composing=useRef(false),importId=useRef(''),refContext=useRef<string|null>(null)
+ const [busy,setBusy]=useState(false),[progress,setProgress]=useState(''),[focused,setFocused]=useState(false)
+ const composing=useRef(false),importId=useRef('')
  const activeChatId=useChatStore(s=>s.activeChatId)
- useEffect(()=>{refContext.current=activeChatId;setQuery(null)},[activeChatId])
+ useEffect(()=>{setQuery(null)},[activeChatId])
  useSysEvent('import.progress',payload=>{const p=payload as {importId:string;done:number;total:number};if(p.importId===importId.current)setProgress(t('chat.importing',{done:p.done,total:p.total}))})
  useEffect(()=>{
   let active=true;setSelected(0)
@@ -49,10 +52,21 @@ export default function ChatComposer({value,onChange,onSend,disabled,empty}:{val
   const token=match??skill
   setQuery(token?{kind:match?'note':'skill',text:token[1]!,start:cursor-token[1]!.length-1,end:cursor}:null)
  }
+ const pickFiles=()=>{
+  const chatId=activeChatId;setBusy(true);importId.current=crypto.randomUUID()
+  void sys<{paths:string[];canceled:boolean}>('app.pick_files').then(async result=>{
+   if(result.canceled)return
+   if(result.paths.length>10-noteRefs.length)throw new Error(t('chat.refLimit'))
+   const imported=await sys<{noteIds:string[];errors:string[]}>('app.import',{paths:result.paths,importId:importId.current})
+   await addNotes(imported.noteIds,chatId)
+   if(imported.errors.length)void message.warning(imported.errors.join('；'))
+  }).catch(e=>{void message.error(String(e))}).finally(()=>{setBusy(false);setProgress('')})
+ }
  return <>
   <div>{noteRefs.map(n=><Tag key={n.noteId} closable={!disabled} onClose={()=>useChatStore.setState({noteRefs:noteRefs.filter(x=>x.noteId!==n.noteId)})}>@ {n.title}</Tag>)}{skillRefs.map(s=><Tag key={s} closable={!disabled} onClose={()=>useChatStore.setState({skillRefs:skillRefs.filter(x=>x!==s)})}>/ {s}</Tag>)}
-   {(noteRefs.length>0||skillRefs.length>0)&&<Button size="small" disabled={disabled} onClick={()=>useChatStore.setState({noteRefs:[],skillRefs:[]})}>{t('chat.clearRefs')}</Button>}</div>
+   {(noteRefs.length>0||skillRefs.length>0)&&<Button size="small" type="text" disabled={disabled} onClick={()=>useChatStore.setState({noteRefs:[],skillRefs:[]})}>{t('chat.clearRefs')}</Button>}</div>
   <Input.TextArea aria-label="对话输入" value={value} disabled={disabled||busy} variant="borderless" autoSize={{minRows:empty?4:2,maxRows:8}} placeholder={t('chat.composerHint')}
+   onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
    onCompositionStart={()=>{composing.current=true;setQuery(null)}} onCompositionEnd={e=>{composing.current=false;inspect(e.currentTarget.value,e.currentTarget.selectionStart)}}
    onChange={e=>{onChange(e.target.value);inspect(e.target.value,e.target.selectionStart)}}
    onKeyDown={e=>{
@@ -61,20 +75,20 @@ export default function ChatComposer({value,onChange,onSend,disabled,empty}:{val
     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();onSend()}
    }}/>
   {query&&items.length>0&&<div role="listbox" aria-label={t('chat.refCandidates')}>{items.map((item,i)=><Button key={item.id} role="option" aria-selected={i===selected} type={i===selected?'primary':'text'} onMouseDown={e=>e.preventDefault()} onClick={()=>choose(i)}>{item.title}</Button>)}</div>}
-  <div className="flex flex-wrap gap-2">
-   <Button size="small" disabled={disabled||busy||noteRefs.length>=10} onClick={()=>{
-    const chatId=activeChatId;setBusy(true);importId.current=crypto.randomUUID()
-    void sys<{paths:string[];canceled:boolean}>('app.pick_files').then(async result=>{
-     if(result.canceled)return
-     if(result.paths.length>10-noteRefs.length)throw new Error(t('chat.refLimit'))
-     const imported=await sys<{noteIds:string[];errors:string[]}>('app.import',{paths:result.paths,importId:importId.current})
-     await addNotes(imported.noteIds,chatId)
-     if(imported.errors.length)void message.warning(imported.errors.join('；'))
-    }).catch(e=>{void message.error(String(e))}).finally(()=>{setBusy(false);setProgress('')})
-   }}>{t('chat.attach')}</Button>
-   <Button size="small" disabled={disabled||busy||noteRefs.length>=10} onClick={()=>setUrlOpen(true)}>{t('chat.addUrl')}</Button>
-   <span className="text-xs">{progress||t('chat.attachHint')}</span>
-   <Switch size="small" disabled={disabled} checked={useKnowledge} onChange={checked=>useChatStore.setState({useKnowledge:checked})}/><span className="text-xs">{t('chat.useKnowledge')}</span>
+  <div className="mt-2 flex flex-wrap items-center gap-1">
+   <Dropdown trigger={['click']} menu={{items:[{key:'_hint',disabled:true,label:t('chat.attachHint')},{key:'file',label:t('chat.attach')},{key:'url',label:t('chat.addUrl')}],onClick:({key})=>{if(key==='file')pickFiles();if(key==='url')setUrlOpen(true)}}}>
+    <Button type="text" size="small" aria-label={t('chat.attach')} icon={<PaperClipOutlined/>} disabled={disabled||busy||noteRefs.length>=10}/>
+   </Dropdown>
+   <MicLauncher disabled={disabled||busy}/>
+   <Button type="text" size="small" aria-label={t('chat.useKnowledge')} aria-pressed={useKnowledge}
+    className={useKnowledge?'!text-[var(--ww-primary)]':''} icon={<BookOutlined/>}
+    disabled={disabled} onClick={()=>useChatStore.setState({useKnowledge:!useKnowledge})}>
+    {useKnowledge?t('chat.useKnowledge'):''}
+   </Button>
+   {progress&&<span className="text-xs text-[var(--ww-text-3)]">{progress}</span>}
+   <span className="flex-1"/>
+   {focused&&!disabled&&<span className="ww-enter-hint">⇧ Enter 换行</span>}
+   {right}
   </div>
   <Modal open={urlOpen} title={t('chat.addUrl')} confirmLoading={busy} okText={t('common.confirm')} cancelText={t('common.cancel')} onCancel={()=>{if(!busy)setUrlOpen(false)}} onOk={()=>{
    const chatId=activeChatId;setBusy(true);void sys<{blocked:boolean;noteId?:string}>('clip.save_url',{url}).then(async r=>{if(r.blocked)throw new Error(t('chat.urlBlocked'));if(r.noteId)await addNotes([r.noteId],chatId);setUrlOpen(false);setUrl('')}).catch(e=>{void message.error(String(e))}).finally(()=>setBusy(false))

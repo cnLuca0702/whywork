@@ -53,7 +53,28 @@ for (const type of ['math_inline', 'math_block']) md.renderer.rules[type] = (tok
 
 export function renderMarkdown(body: string,sources?:Citation[]): string {
   try {
-    return DOMPurify.sanitize(md.render(body,{sources}), { ADD_ATTR: ['data-target','data-source'],
+    return DOMPurify.sanitize(md.render(displayBody(body),{sources}), { ADD_ATTR: ['data-target','data-source'],
       ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|whywork-res|myremio-res):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i })
   } catch { return `<pre>${md.utils.escapeHtml(body)}</pre>` }
+}
+
+/** 只隐藏导入器生成的独立来源注释；普通注释与代码示例属于用户正文。 */
+const metadataParser = new MarkdownIt({html:true})
+export function displayBody(body: string): string {
+  const lines = body.split('\n')
+  const hidden = new Set<number>()
+  for (const token of metadataParser.parse(body, {})) {
+    if (token.type !== 'html_block' || !token.map ||
+        !/^<!-- source-path: [^\r\n]* -->\s*$/.test(token.content)) continue
+    for (let line = token.map[0]; line < token.map[1]; line++) hidden.add(line)
+  }
+  return lines.filter((_, line) => !hidden.has(line)).join('\n')
+}
+
+/** 引用片段：去掉 front matter，⟦命中⟧ 标记渲染为高亮（U-04） */
+export function formatSnippet(raw: string): string {
+  // 检索片段可能包含文件头；正文渲染不剥离分隔线包围的内容。
+  const header = /^---\r?\n((?:[A-Za-z_][\w-]*:[^\n]*\r?\n)+)---(?:\r?\n|$)/.exec(raw)
+  const text = displayBody(header ? raw.slice(header[0].length) : raw)
+  return text ? md.utils.escapeHtml(text).replace(/⟦([^⟧]*)⟧/g, (_m, inner: string) => `<mark>${inner}</mark>`) : ''
 }

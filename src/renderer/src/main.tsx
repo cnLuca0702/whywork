@@ -25,6 +25,7 @@ function Root() {
   return (
     <ConfigProvider
       locale={zhCN}
+      button={{ autoInsertSpace: false }}
       theme={{
         algorithm: prefersDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {

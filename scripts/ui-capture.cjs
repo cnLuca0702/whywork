@@ -79,9 +79,9 @@ async function run() {
     ['chat', () => rail.getByRole('button', { name: 'AI 问答', exact: true }).click(), '.ww-chat-pane'],
     ['notes', () => page.locator('.ww-sidebar button').filter({ hasText: /^全部笔记$/ }).click(), '.ww-resource-pane'],
     ['settings', () => page.locator('.ww-sidebar-footer').getByRole('button', { name: '设置' }).click(), '.ww-provider-settings'],
-    ['record', () => rail.getByRole('button', { name: '录音', exact: true }).click(), 'h2'],
-    ...[['capture', '采集'], ['office', 'Office 表格'], ['calendar', '日历'], ['mail', '邮件'], ['browser', '动态网页'], ['pair', '设备绑定']]
-      .map(([id, label]) => [id, () => rail.getByRole('button', { name: label, exact: true }).click(), '.ant-tabs-tabpane-active'])
+    ['record', () => rail.getByRole('button', { name: '录音', exact: true }).click(), '.ww-recording'],
+    ...[['capture', '采集'], ['office', '表格与文档'], ['calendar', '日历'], ['mail', '邮件'], ['browser', '网页浏览'], ['pair', '设备绑定']]
+      .map(([id, label]) => [id, () => rail.getByRole('button', { name: label, exact: true }).click(), '.ww-tool-page'])
   ]
   for (const theme of ['light', 'dark']) {
     await application.evaluate(({ nativeTheme }, value) => { nativeTheme.themeSource = value }, theme)
@@ -103,8 +103,11 @@ async function run() {
       // Allow lazy views, fonts and Ant Design transitions to settle before capture.
       await page.evaluate(() => document.fonts.ready)
       await page.waitForTimeout(350)
+      // U-03：页面文本不得出现内部追踪注释或 front matter 残留
+      const bodyText = await page.evaluate(() => document.body.innerText)
+      assert(!bodyText.includes('source-path') && !bodyText.includes('<!--'), '页面泄露内部注释')
       if (view === 'office') {
-        const cardBackground = await page.locator('.ant-tabs-tabpane-active .ant-card').first()
+        const cardBackground = await page.locator('.ww-tool-page .ant-card').first()
           .evaluate(card => getComputedStyle(card).backgroundColor)
         assert.equal(cardBackground, theme === 'dark' ? 'rgb(32, 35, 43)' : 'rgb(255, 255, 255)', 'Ant Design theme did not update')
       }

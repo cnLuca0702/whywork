@@ -2,7 +2,7 @@ import SummaryBatch from '../components/SummaryBatch'
 import CollectionPicker from '../components/CollectionPicker'
 import FileCandidates from '../components/FileCandidates'
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
-import { Alert, Checkbox, Dropdown, Switch, Select, Button, Empty, Input, Modal, Popconfirm, Progress, Spin, Tag, message } from 'antd'
+import { Alert, Button, Checkbox, DatePicker, Dropdown, Input, Modal, Popconfirm, Popover, Select, Spin, Switch, Empty, Progress, Tag, message } from 'antd'
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -10,10 +10,13 @@ import {
   StarOutlined,
   PushpinFilled,
   PushpinOutlined,
-  RestOutlined,
   UndoOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  ImportOutlined,
+  FolderOpenOutlined,
+  FilterOutlined
 } from '@ant-design/icons'
+import dayjs, {type Dayjs} from 'dayjs'
 import { t } from '../i18n/zh'
 import { sys, useSysEvent } from '../api'
 import { useUiStore, type NoteFilter } from '../store/ui'
@@ -38,6 +41,9 @@ const FILTER_QUERY: Record<NoteFilter, Record<string, unknown> | undefined> = {
   trash: { deleted: true }
 }
 
+const TYPE_KEYS = { note: 'notes.manualType', web: 'notes.webType', document: 'notes.documentType', email: 'notes.mailType', audio: 'notes.audioType', image: 'notes.imageType' } as const
+const SOURCE_OF_TYPE: Record<string, string[]> = { note: ['manual','text','journal','chat'], web: ['page'], document: ['word','pdf','ppt'], email: ['mail_message'], audio: ['audio','meeting_transcript','meeting_overview'], image: ['image'] }
+
 function fmtTime(ts: number): string {
   const d = new Date(ts)
   const now = new Date()
@@ -45,6 +51,7 @@ function fmtTime(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** 两行紧凑行：标题行（图标/标题/时间/悬停操作），第二行摘要（无摘要时由主进程给正文开头，U-19） */
 function NoteCard({ note, selecting, selected, onSelect, onCollection }: { note: NoteListItem; selecting:boolean; selected:boolean; onSelect:()=>void; onCollection:()=>void }) {
   const { setActiveNote } = useUiStore()
   const { setStatus, remove, restore } = useNotesStore()
@@ -54,68 +61,36 @@ function NoteCard({ note, selecting, selected, onSelect, onCollection }: { note:
       className="ww-note-row group"
       onClick={() => selecting ? onSelect() : setActiveNote(note.noteId)}
     >
-      <div className="mb-1 flex items-center gap-1">
-        {selecting&&<Checkbox checked={selected} onClick={e=>e.stopPropagation()} onChange={onSelect}/>}
-        {note.pinned ? <PushpinFilled className="text-amber-500" /> : null}
-        <FileTextOutlined className="text-[var(--ww-primary)]"/><span className="min-w-0 flex-1 truncate font-medium">{note.title}</span>
-        <span className="ml-2 shrink-0 text-xs text-[var(--ww-text-3)]">{fmtTime(note.modifiedAt)}</span>
-      </div>
-      <div className="mb-2 line-clamp-2 min-h-[2.5rem] text-xs text-[var(--ww-text-3)] dark:text-[var(--ww-text-3)]">
-        {note.searchSnippet || note.summary || '暂无摘要，打开查看正文'}
-      </div>
-      <div className="flex items-center gap-2 text-[var(--ww-text-3)]">
-        {note.searchSource&&<Tag>{note.searchSource}</Tag>}
-        {note.noteSource !== 'manual' && <Tag style={{ fontSize: 11 }}>{note.noteSource}</Tag>}
-        <span className="flex-1" />
-        {!note.deleted&&<span onClick={e=>e.stopPropagation()}><Dropdown trigger={['click']} menu={{items:[
-          {key:'collection',label:t('notes.addCollection'),onClick:onCollection},
-          {key:'later',label:t(note.later?'notes.unlater':'notes.later'),onClick:()=>void setStatus(note.noteId,{later:!note.later}).catch(e=>message.error(String(e)))},
-          {key:'copy',label:t('notes.copyTitle'),onClick:()=>void navigator.clipboard.writeText(note.title).catch(e=>message.error(String(e)))},
-          {key:'reveal',label:t('notes.reveal'),onClick:()=>void sys('app.reveal_in_finder',{path:note.relativePath}).catch(e=>message.error(String(e)))},
-          {key:'pdf',label:t('notes.exportPdf'),onClick:()=>void sys('export.note_pdf',{noteId:note.noteId}).catch(e=>message.error(String(e)))}
-        ]}}><Button size="small" type="text" aria-label={t('notes.moreMenu')}>…</Button></Dropdown></span>}
-        <span className="hidden gap-1 group-hover:flex">
+      <div className="flex min-w-0 items-center gap-1.5">
+        {selecting&&<Checkbox className="flex-shrink-0" checked={selected} onClick={e=>e.stopPropagation()} onChange={onSelect}/>}
+        {note.pinned ? <PushpinFilled className="flex-shrink-0 text-amber-500" /> : <FileTextOutlined className="flex-shrink-0 text-[var(--ww-primary)]"/>}
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{note.title}</span>
+        <span className="ww-note-actions ml-1 flex flex-shrink-0 items-center gap-1.5" onClick={e=>e.stopPropagation()}>
+          {!note.deleted&&<Dropdown trigger={['click']} menu={{items:[
+            {key:'collection',label:t('notes.addCollection'),onClick:onCollection},
+            {key:'later',label:t(note.later?'notes.unlater':'notes.later'),onClick:()=>void setStatus(note.noteId,{later:!note.later}).catch(e=>message.error(String(e)))},
+            {key:'copy',label:t('notes.copyTitle'),onClick:()=>void navigator.clipboard.writeText(note.title).catch(e=>message.error(String(e)))},
+            {key:'reveal',label:t('notes.reveal'),onClick:()=>void sys('app.reveal_in_finder',{path:note.relativePath}).catch(e=>message.error(String(e)))},
+            {key:'pdf',label:t('notes.exportPdf'),onClick:()=>void sys('export.note_pdf',{noteId:note.noteId}).catch(e=>message.error(String(e)))}
+          ]}}><Button size="small" type="text" aria-label={t('notes.moreMenu')}>…</Button></Dropdown>}
           {note.deleted ? (
-            <>
-              <UndoOutlined
-                title="恢复"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void restore(note.noteId)
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <span
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void setStatus(note.noteId, { favorite: !note.favorite })
-                }}
-              >
-                {note.favorite ? <StarFilled className="text-amber-400" /> : <StarOutlined />}
-              </span>
-              <span
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void setStatus(note.noteId, { pinned: !note.pinned })
-                }}
-              >
-                {note.pinned ? <PushpinFilled className="text-amber-500" /> : <PushpinOutlined />}
-              </span>
-              <Popconfirm
-                title="移入回收站？"
-                onConfirm={(e) => {
-                  e?.stopPropagation()
-                  void remove(note.noteId)
-                }}
-                onCancel={(e) => e?.stopPropagation()}
-              >
-                <DeleteOutlined onClick={(e) => e.stopPropagation()} />
-              </Popconfirm>
-            </>
-          )}
+            <UndoOutlined aria-label="恢复" title="恢复" onClick={()=>void restore(note.noteId)}/>
+          ) : (<>
+            <span onClick={()=>void setStatus(note.noteId,{favorite:!note.favorite})} title={t('notes.favorite')}>
+              {note.favorite ? <StarFilled className="text-amber-400"/> : <StarOutlined/>}
+            </span>
+            <span onClick={()=>void setStatus(note.noteId,{pinned:!note.pinned})} title={t('nav.pinned')}>
+              {note.pinned ? <PushpinFilled className="text-amber-500"/> : <PushpinOutlined/>}
+            </span>
+            <Popconfirm title="移入回收站？" onConfirm={(e)=>{e?.stopPropagation();void remove(note.noteId)}} onCancel={(e)=>e?.stopPropagation()}>
+              <DeleteOutlined aria-label={t('notes.trash')} onClick={(e)=>e.stopPropagation()}/>
+            </Popconfirm>
+          </>)}
         </span>
+        <span className="ml-1 flex-shrink-0 text-xs text-[var(--ww-text-3)]">{fmtTime(note.modifiedAt)}</span>
+      </div>
+      <div className="mt-0.5 truncate pl-[26px] pr-2 text-xs text-[var(--ww-text-3)]">
+        {note.searchSnippet || note.summary || '\u00A0'}
       </div>
     </div>
   )
@@ -138,12 +113,13 @@ export default function NotesView() {
   const [creating,setCreating]=useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [searchDraft,setSearchDraft]=useState(search)
+  const [filterOpen,setFilterOpen]=useState(false)
   useEffect(()=>{if(searchTimer.current)clearTimeout(searchTimer.current);setSearchDraft(search)},[search,filter,collectionId])
   const [importing, setImporting] = useState<{ done: number; total: number; current: string } | null>(null)
   const importIdRef = useRef<string | null>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const listFilter=useMemo(()=>{const filterQuery=filter==='trash'?{deleted:true}:FILTER_QUERY[filter];return {...(collectionId ? { collectionId } : filterQuery),sources:types.length?types.flatMap(type=>({note:['manual','text','journal','chat'],web:['page'],document:['word','pdf','ppt'],email:['mail_message'],audio:['audio','meeting_transcript','meeting_overview'],image:['image']}[type]??[])):undefined,modifiedFrom:from?new Date(from+'T00:00:00').getTime():undefined,modifiedTo:to?new Date(to+'T00:00:00').getTime():undefined}},[filter,collectionId,types,from,to])
+  const listFilter=useMemo(()=>{const filterQuery=filter==='trash'?{deleted:true}:FILTER_QUERY[filter];return {...(collectionId ? { collectionId } : filterQuery),sources:types.length?types.flatMap(type=>SOURCE_OF_TYPE[type]??[]):undefined,modifiedFrom:from?new Date(from+'T00:00:00').getTime():undefined,modifiedTo:to?new Date(to+'T00:00:00').getTime():undefined}},[filter,collectionId,types,from,to])
   const refresh=useCallback(()=>{void list({filter:listFilter,sort,limit:100,offset:limit-100,query:search.trim()||undefined,searchMode}).catch(e=>message.error(String(e)))},[listFilter,sort,limit,search,searchMode,list])
 
   useEffect(() => {
@@ -185,6 +161,25 @@ export default function NotesView() {
     }
   }
 
+  const importPaths=async(paths:string[])=>{
+    if(!paths.length)return
+    const importId=`imp_${Date.now().toString(36)}`
+    importIdRef.current=importId
+    try{
+      const r=await sys<{noteIds:string[];errors:string[]}>('app.import',{paths,importId})
+      if(r.errors.length>0)void message.warning(r.errors.join('\n'))
+      if(r.noteIds.length>0)void message.success(`已导入 ${r.noteIds.length} 条笔记`)
+    }catch(e){void message.error(String(e))}finally{setImporting(null)}
+  }
+  const importFiles=async()=>{
+    const picked=await sys<{canceled:boolean;paths:string[]}>('app.pick_files')
+    if(!picked.canceled)await importPaths(picked.paths)
+  }
+  const importFolder=async()=>{
+    const picked=await sys<{canceled:boolean;path?:string}>('app.pick_folder')
+    if(!picked.canceled&&picked.path)await importPaths([picked.path])
+  }
+
   const createNote = async () => {
     const title = newTitle.trim()
     if (!title || creatingRef.current) return
@@ -201,9 +196,24 @@ export default function NotesView() {
 
   if (activeNoteId) return <NoteDetailView />
 
+  const dateValue:(Dayjs|null)[]=[from?dayjs(from):null,to?dayjs(to):null]
+  const filterActive=types.length>0||!!from||!!to
+  const filterContent=<div className="w-64 space-y-3">
+   <div><div className="mb-1 text-xs font-medium text-[var(--ww-text-2)]">{t('notes.sort')}</div>
+    <Select className="w-full" size="small" aria-label={t('notes.sort')} value={sort} onChange={setSort} options={(['modified','created','accessed','title'] as const).map(value=>({value,label:t(`notes.${value}`)}))}/></div>
+   <div><div className="mb-1 text-xs font-medium text-[var(--ww-text-2)]">{t('notes.type')}</div>
+    <Select className="w-full" size="small" mode="multiple" allowClear aria-label={t('notes.type')} value={types} onChange={setTypes}
+     options={(Object.keys(TYPE_KEYS) as (keyof typeof TYPE_KEYS)[]).map(value=>({value,label:t(TYPE_KEYS[value])}))}/></div>
+   <div><div className="mb-1 text-xs font-medium text-[var(--ww-text-2)]">{t('notes.modifiedRange')}</div>
+    <DatePicker.RangePicker className="w-full" size="small" aria-label={t('notes.modifiedRange')} value={dateValue as [Dayjs|null,Dayjs|null]}
+     presets={[{label:'今天',value:[dayjs(),dayjs()]},{label:'近 7 天',value:[dayjs().subtract(6,'day'),dayjs()]},{label:'近 30 天',value:[dayjs().subtract(29,'day'),dayjs()]}]}
+     onChange={(dates)=>{const [a,b]=dates??[];setFrom(a?a.format('YYYY-MM-DD'):'');setTo(b?b.format('YYYY-MM-DD'):'')}}/></div>
+   {filterActive&&<Button size="small" block onClick={()=>{setTypes([]);setFrom('');setTo('')}}>清除筛选</Button>}
+  </div>
+
   return (
     <div
-      className="flex h-full flex-col"
+      className="relative flex h-full flex-col"
       onDragOver={(e) => {
         e.preventDefault()
         setDragOver(true)
@@ -214,8 +224,7 @@ export default function NotesView() {
       <div className="ww-notes-toolbar">
         <span className="font-medium">{collectionId ? '集合笔记' : FILTER_TITLES[filter]}</span>
         <span className="text-xs text-[var(--ww-text-3)]">{t('notes.count', { n: total })}</span>
-        <span className="flex-1" />
-        <Select size="small" aria-label="本地检索路线" value={searchMode} style={{width:140}} onChange={setSearchMode} options={[{value:'fts',label:'FTS5 索引'},{value:'text',label:'本地正文逐词'}]}/>
+        <Select size="small" aria-label="检索方式" value={searchMode} style={{width:130}} onChange={setSearchMode} options={[{value:'fts',label:t('notes.searchFast')},{value:'text',label:t('notes.searchExact')}]}/>
         <Input.Search
           placeholder={t('notes.searchPlaceholder')}
           size="small"
@@ -231,30 +240,25 @@ export default function NotesView() {
           }}
         />
         {filter !== 'trash' && (
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setNewOpen(true)}>
-            新建笔记
-          </Button>
+          <Dropdown trigger={['click']} menu={{items:[
+            {key:'new',label:t('notes.newNote'),onClick:()=>setNewOpen(true)},
+            {key:'import',label:t('notes.importFiles'),icon:<ImportOutlined/>,onClick:()=>void importFiles()},
+            {key:'importDir',label:t('notes.importFolder'),icon:<FolderOpenOutlined/>,onClick:()=>void importFolder()}
+          ]}}>
+            <Button size="small" type="primary" icon={<PlusOutlined />}>{t('notes.newNote')}</Button>
+          </Dropdown>
         )}
+        <Popover open={filterOpen} onOpenChange={setFilterOpen} trigger="click" placement="bottomRight" content={filterContent} arrow={false}>
+          <Button size="small" icon={<FilterOutlined/>} className={filterActive?'!border-[var(--ww-primary)] !text-[var(--ww-primary)]':''}>{t('notes.filter')}</Button>
+        </Popover>
+        <label className="flex cursor-pointer items-center gap-1 text-sm" onClick={()=>setGroup(!group)}>
+          <Switch checked={group} onChange={setGroup} size="small"/><span className="text-xs text-[var(--ww-text-2)]">{t('notes.group')}</span>
+        </label>
+        <Button size="small" onClick={()=>{setSelecting(!selecting);setSelected([])}}>{t(selecting?'common.cancel':'notes.select')}</Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-6 py-2">
-        <Select aria-label={t('notes.sort')} value={sort} onChange={setSort} options={(['modified','created','accessed','title'] as const).map(value=>({value,label:t(`notes.${value}`)}))}/>
-        <Select mode="multiple" allowClear style={{minWidth:150}} placeholder={t('notes.type')} value={types} onChange={setTypes} options={['note','web','document','email','audio','image'].map((value,i)=>({value,label:t((['notes.manualType','notes.webType','notes.documentType','notes.mailType','notes.audioType','notes.imageType'] as const)[i]!)}))}/>
-        <input type="date" aria-label={t('notes.from')} value={from} onChange={e=>setFrom(e.target.value)}/><input type="date" aria-label={t('notes.to')} min={from} value={to} onChange={e=>setTo(e.target.value)}/>
-        <Switch checked={group} onChange={setGroup}/><span>{t('notes.group')}</span>
-        <Button onClick={()=>{setSelecting(!selecting);setSelected([])}}>{t(selecting?'common.cancel':'notes.select')}</Button>
-      </div>
-      {selecting&&<div className="flex flex-wrap items-center gap-2 px-6 py-2">
-        <Checkbox checked={items.length>0&&items.every(n=>selected.includes(n.noteId))} onChange={e=>setSelected(e.target.checked?items.map(n=>n.noteId):[])}/><span>{t('notes.selected',{n:selected.length})}</span>
-        {filter==='trash'?<Button disabled={!selected.length||batchBusy} onClick={()=>void batch('notes.batch_restore')}>{t('notes.restore')}</Button>:<>
-          <Button disabled={!selected.length||batchBusy} onClick={()=>void batch('notes.batch_set_status',{favorite:true})}>{t('notes.favorite')}</Button>
-          <Button disabled={!selected.length||batchBusy} onClick={()=>void batch('notes.batch_set_status',{later:true})}>{t('notes.later')}</Button>
-          <Button disabled={!selected.length||batchBusy} onClick={()=>setCollectionNotes(selected)}>{t('notes.addCollection')}</Button>
-          <Button danger disabled={!selected.length||batchBusy} onClick={()=>Modal.confirm({title:t('notes.batchDeleteConfirm'),onOk:()=>batch('notes.batch_delete')})}>{t('notes.trash')}</Button>
-        </>}
-      </div>}
       {collectionNotes&&<CollectionPicker noteIds={collectionNotes} onClose={()=>{setCollectionNotes(null);refresh()}}/>}
-      {search.trim()&&<div className="px-6 py-1 text-xs text-[var(--ww-text-3)]">{searchMode==='fts'?'FTS5 短语检索；中文分词不命中时可切换本地正文。':'逐词匹配已入库笔记的本地正文；所有词都匹配，支持中文子串。'}不调用模型。</div>}
+      {search.trim()&&<div className="px-6 py-1 text-xs text-[var(--ww-text-3)]">{searchMode==='fts'?t('notes.searchFastHint'):t('notes.searchExactHint')}</div>}
       {filter==='unprocessed'&&<SummaryBatch total={total} filter={listFilter} query={search.trim()} searchMode={searchMode}/>}
       {warning&&<Alert type="warning" message={warning}/>}
       {filter==='all'&&!collectionId&&<FileCandidates query={search.trim()}/>}
@@ -293,14 +297,26 @@ export default function NotesView() {
         ) : (
           <div className="ww-note-list">
             {(group?[...new Set(items.map(n=>n.noteSource))]:['']).map(source=><div key={source}>
-              {group&&<h3>{source} · {items.filter(n=>n.noteSource===source).length}</h3>}
+              {group&&<h3 className="mb-1 mt-3 text-sm font-medium text-[var(--ww-text-2)]">{source} · {items.filter(n=>n.noteSource===source).length}</h3>}
               {items.filter(n=>!group||n.noteSource===source).map(n=><NoteCard key={n.noteId} note={n} selecting={selecting} selected={selected.includes(n.noteId)} onSelect={()=>setSelected(ids=>ids.includes(n.noteId)?ids.filter(id=>id!==n.noteId):[...ids,n.noteId])} onCollection={()=>setCollectionNotes([n.noteId])}/>)}
             </div>)}
           </div>
         )}
       </div>
 
-      <div className="flex justify-center gap-3 p-2"><Button disabled={limit===100||loading} onClick={()=>setLimit(n=>Math.max(100,n-100))}>←</Button><span>{Math.ceil(limit/100)} / {Math.max(1,Math.ceil(total/100))}</span><Button disabled={limit>=total||loading} onClick={()=>setLimit(n=>n+100)}>→</Button></div>
+      {total>100&&<div className="flex justify-center gap-3 p-2"><Button disabled={limit===100||loading} onClick={()=>setLimit(n=>Math.max(100,n-100))}>←</Button><span>{Math.ceil(limit/100)} / {Math.max(1,Math.ceil(total/100))}</span><Button disabled={limit>=total||loading} onClick={()=>setLimit(n=>n+100)}>→</Button></div>}
+
+      {selecting&&selected.length>0&&<div className="ww-batch-bar" role="toolbar" aria-label={t('notes.batchBar')}>
+        <span className="font-medium">{t('notes.selected',{n:selected.length})}</span>
+        {filter==='trash'
+          ?<Button size="small" disabled={batchBusy} onClick={()=>void batch('notes.batch_restore')}>{t('notes.restore')}</Button>
+          :<><Button size="small" disabled={batchBusy} onClick={()=>void batch('notes.batch_set_status',{favorite:true})}>{t('notes.favorite')}</Button>
+          <Button size="small" disabled={batchBusy} onClick={()=>void batch('notes.batch_set_status',{later:true})}>{t('notes.later')}</Button>
+          <Button size="small" disabled={batchBusy} onClick={()=>setCollectionNotes(selected)}>{t('notes.addCollection')}</Button>
+          <Button size="small" danger disabled={batchBusy} onClick={()=>Modal.confirm({title:t('notes.batchDeleteConfirm'),onOk:()=>batch('notes.batch_delete')})}>{t('notes.trash')}</Button></>}
+        <Button size="small" type="text" onClick={()=>setSelected([])} aria-label={t('common.cancel')}>×</Button>
+      </div>}
+
       {dragOver && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="rounded-xl border-2 border-dashed border-blue-400 bg-white/95 px-16 py-10 text-center dark:bg-[#222]/95">
@@ -332,6 +348,3 @@ export default function NotesView() {
     </div>
   )
 }
-
-// 保留图标引用（trash 恢复按钮备用于列表头部操作）
-void RestOutlined

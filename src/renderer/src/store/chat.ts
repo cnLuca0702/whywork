@@ -45,7 +45,7 @@ interface ChatState {
   streamText: string
   streamReasoning: string
   regenerate: (acknowledgeChanges?:boolean) => Promise<void>
-  toolEvents: { toolCallId?:string; name: string; phase: 'start' | 'done' | 'error'; output?: string; ts: number }[]
+  toolEvents: { toolCallId?:string; name: string; phase: 'start' | 'done' | 'error'; output?: string; args?: string; ts: number }[]
   newChat: () => void
   loadChats: () => Promise<void>
   openChat: (chatId: string | null, noteId?: string | null) => Promise<string|null>
@@ -173,7 +173,7 @@ export function wireChatEvents(): void {
   window.whywork.onEvent((e) => {
     const st = useChatStore.getState()
     if(e.topic==='chat.renamed')void st.loadChats()
-    const p = e.payload as { toolCallId?:string;aborted?:boolean;chatId?: string; delta?: string; name?: string; phase?: string; output?: string; error?: string }
+    const p = e.payload as { toolCallId?:string;aborted?:boolean;chatId?: string; delta?: string; name?: string; phase?: string; output?: string; args?: string; error?: string }
     if(p.chatId && (e.topic==='chat.done'||e.topic==='chat.error'))useChatStore.setState({running:{...st.running,[p.chatId]:false}})
     if (p.chatId && p.chatId !== st.activeChatId) return
     switch (e.topic) {
@@ -195,7 +195,7 @@ export function wireChatEvents(): void {
       case 'chat.tool': {
         const events=[...useChatStore.getState().toolEvents]
         const at=events.findIndex(t=>p.toolCallId && t.toolCallId===p.toolCallId)
-        const value={toolCallId:p.toolCallId,name:p.name??'',phase:(p.phase as 'start'|'done'|'error')??'start',output:p.output,ts:Date.now()}
+        const at2=events[at]??undefined;const value={toolCallId:p.toolCallId,name:p.name??'',phase:(p.phase as 'start'|'done'|'error')??'start',output:p.output,args:p.args??at2?.args,ts:Date.now()}
         if(at>=0)events[at]=value;else events.push(value)
         useChatStore.setState({toolEvents:events})
         break

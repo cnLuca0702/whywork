@@ -63,6 +63,20 @@ function getBody(note: repo.NoteRow): string {
   }
 }
 
+/** 列表行摘要兜底：无摘要时取正文纯文本开头（U-19，前端不再显示“暂无摘要，打开查看正文”） */
+function bodyPreview(note: repo.NoteRow): string {
+  const text = getBody(note)
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`\n]*`/g, ' ')
+    .replace(/!?\[\[([^\]]+)\]\]/g, '$1')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/[>*_#|-]{1,}/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text ? text.slice(0, 120) : ''
+}
+
 function noteDetail(noteId: string) {
   const note = repo.getNote(noteId)
   if (!note) throw new Error(`笔记不存在: ${noteId}`)
@@ -181,10 +195,10 @@ export function registerNotesDomain(): void {
       }) => {
         if(p.query?.trim()&&p.searchMode){
           const r=await searchLocalNotes(p.query.trim(),p.searchMode,p.filter,p.limit,p.offset,p.sort)
-          return{items:r.items.map(h=>({...toListItem(h.note),searchSnippet:h.snippet,searchSource:h.source})),total:r.total,warning:r.warning}
+          return{items:r.items.map(h=>{const base=toListItem(h.note);return{...base,...(base.summary?{}:{summary:bodyPreview(h.note)}),searchSnippet:h.snippet,searchSource:h.source}}),total:r.total,warning:r.warning}
         }
         const r = repo.listNotes({...p.filter,titleQuery:p.titleQuery}, p.sort, p.limit, p.offset, p.query)
-        return { items: r.items.map(n=>{const image=p.query?ocrImages(n.note_id).find(i=>i.ocrText.toLowerCase().includes(p.query!.toLowerCase())):undefined;return {...toListItem(n),...(image?{searchSnippet:'图片文字：'+image.ocrText.slice(Math.max(0,image.ocrText.toLowerCase().indexOf(p.query!.toLowerCase())-40),Math.max(0,image.ocrText.toLowerCase().indexOf(p.query!.toLowerCase())-40)+240),searchSource:'图片文字'}:{})}}), total: r.total }
+        return { items: r.items.map(n=>{const base=toListItem(n);const image=p.query?ocrImages(n.note_id).find(i=>i.ocrText.toLowerCase().includes(p.query!.toLowerCase())):undefined;return {...base,...(base.summary?{}:{summary:bodyPreview(n)}),...(image?{searchSnippet:'图片文字：'+image.ocrText.slice(Math.max(0,image.ocrText.toLowerCase().indexOf(p.query!.toLowerCase())-40),Math.max(0,image.ocrText.toLowerCase().indexOf(p.query!.toLowerCase())-40)+240),searchSource:'图片文字'}:{})}}), total: r.total }
       }
     },
 

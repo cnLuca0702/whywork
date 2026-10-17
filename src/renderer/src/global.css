@@ -266,15 +266,16 @@ button:focus-visible { outline:2px solid var(--ww-primary); outline-offset:2px; 
 
 /* ---------- 无边框融合规范：按钮/输入/选择与背景融为一体（用户要求） ---------- */
 
-/* 默认按钮：透明无边框，悬停浮现软底 */
+/* 默认按钮：描边按钮承载次要操作；每个区块的主操作用 primary（U-26） */
 .ant-btn-default {
   background: transparent !important;
-  border-color: transparent !important;
+  border-color: var(--ww-border) !important;
   box-shadow: none !important;
 }
 .ant-btn-default:not(:disabled):hover {
   background: var(--ww-hover) !important;
-  border-color: transparent !important;
+  border-color: var(--ww-border) !important;
+  color: var(--ww-primary);
 }
 .ant-btn-default:not(:disabled):active {
   background: var(--ww-primary-soft) !important;
@@ -310,6 +311,15 @@ textarea.ant-input::placeholder {
 .ant-input-password-icon,
 .ant-input-clear-icon {
   color: var(--ww-text-3) !important;
+}
+/* 禁用态与普通态明确区分（U-32） */
+.ant-input:disabled,
+.ant-input-affix-wrapper-disabled,
+textarea.ant-input:disabled,
+.ant-select-disabled .ant-select-selector {
+  opacity: 0.5 !important;
+  background: var(--ww-bg-soft) !important;
+  border-color: transparent !important;
 }
 /* 输入前置/后置标签（addon）同步融合 */
 .ant-input-group-addon {
@@ -400,3 +410,109 @@ textarea.ant-input::placeholder {
 .ww-assistant:hover .ww-reply-actions, .ww-assistant:focus-within .ww-reply-actions { opacity: 1; }
 @media (hover: none) { .ww-reply-actions { opacity: 1; } }
 .ww-citation-hit { background: var(--ww-primary-soft); outline: 2px solid var(--ww-primary); }
+
+/* ================= UI-REVIEW 落地（docs/UI-REVIEW.md §4.1 设计基线） ================= */
+
+/* 设计令牌补充：间距 4 的倍数、代码块、链接（U-05、U-36） */
+:root {
+  --ww-space-1: 4px; --ww-space-2: 8px; --ww-space-3: 12px; --ww-space-4: 16px;
+  --ww-code-bg: #f6f8fa; --ww-code-text: #24292f; --ww-code-border: #e2e6eb; --ww-code-string: #28804a;
+  --ww-link: #2563eb;
+}
+.dark {
+  --ww-code-bg: #161b26; --ww-code-text: #e6edf3; --ww-code-border: #2a3040; --ww-code-string: #8ed9a8;
+  --ww-link: #7ab0ff;
+}
+
+/* 代码块统一令牌：对话与笔记同一套底色/正文色，两种主题对比度 ≥ 4.5:1（U-05） */
+.ww-markdown pre,
+.pm-editor .ProseMirror pre {
+  background: var(--ww-code-bg);
+  color: var(--ww-code-text);
+  border: 1px solid var(--ww-code-border);
+}
+.dark .pm-editor .ProseMirror pre { color: var(--ww-code-text); background: var(--ww-code-bg); }
+.ww-markdown .hljs-string { color: var(--ww-code-string); }
+.pm-codeblock { border-color: var(--ww-code-border); }
+.pm-codeblock-lang { background: var(--ww-bg-soft); color: var(--ww-text-2); border-bottom-color: var(--ww-code-border); }
+.wikilink-chip,
+.pm-editor .pm-wikilink,
+span.pm-wikilink { color: var(--ww-link); }
+
+/* 浮层层级：竖栏/状态栏等自有固定元素降到 Ant Design 浮层（1000）之下（U-01） */
+.ww-rail { position: relative; z-index: 0; }
+
+/* 品牌徽标不折行（U-06） */
+.ww-brand>span { white-space: nowrap; }
+
+/* 面板头标题：14px 中等字重，作为当前面板的明确标识（U-37） */
+.ww-panel-bar { font-size: 14px; color: var(--ww-text); font-weight: 500; }
+
+/* 字号层级只保留 5 档：页面标题 20/600，分组标题 15/600（U-29、§4.1） */
+.ww-provider-settings h2 { font-size: 20px; font-weight: 600; }
+.ww-provider-tabs .ant-radio-wrapper { font-size: 15px; }
+.ww-page-title { font-size: 20px; font-weight: 600; margin: 0; }
+.ww-page-desc { font-size: 12px; color: var(--ww-text-3); margin: 4px 0 0; }
+
+/* 设置页：左侧竖向导航 + 页面统一为“标题 → 说明 → 分组卡片”（U-06、§4.4） */
+.ww-settings-tabs.ant-tabs-left > .ant-tabs-nav { min-width: 128px; }
+.ww-settings-tabs .ant-tabs-tab { margin: 2px 0; padding: 6px 12px; }
+.ww-settings-body { max-width: 720px; }
+
+/* 推理折叠：自定义三角图标与动画，替代字符三角（U-17） */
+.ww-reasoning { margin: 2px 0 6px; font-size: 12px; color: var(--ww-text-2); }
+.ww-reasoning>summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; user-select: none; color: var(--ww-text-2); }
+.ww-reasoning>summary::-webkit-details-marker { display: none; }
+.ww-reasoning>summary .anticon { font-size: 10px; color: var(--ww-text-3); transition: transform .15s; }
+.ww-reasoning[open]>summary .anticon { transform: rotate(90deg); }
+.ww-reasoning>summary:hover { color: var(--ww-text); }
+.ww-reasoning>.ww-reasoning-body { border-left: 2px solid var(--ww-border); padding: 2px 0 2px 10px; margin-top: 6px; white-space: pre-wrap; color: var(--ww-text-2); line-height: 1.7; }
+
+/* 工具调用：人类可读的一行展示，参数折叠进“详情”（U-15） */
+.ww-tool-line { display: flex; align-items: flex-start; gap: 7px; max-width: 640px; margin: 4px 0; padding: 5px 10px; border: 1px solid var(--ww-border); border-radius: 8px; background: var(--ww-bg-soft); font-size: 12px; color: var(--ww-text-2); }
+.ww-tool-line .ww-tool-icon { flex-shrink: 0; margin-top: 1px; }
+.ww-tool-line .ww-tool-title { color: var(--ww-text); font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.ww-tool-line .ww-tool-detail { flex-basis: 100%; margin-top: 4px; color: var(--ww-text-3); cursor: pointer; }
+.ww-tool-line .ww-tool-detail>summary { list-style: none; user-select: none; }
+.ww-tool-line .ww-tool-detail>summary::-webkit-details-marker { display: none; }
+.ww-tool-line .ww-tool-detail pre { margin: 6px 0 0; padding: 8px; border-radius: 6px; background: var(--ww-code-bg); color: var(--ww-code-text); font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; }
+.ww-tool-line.is-error { border-color: #e88080; }
+.dark .ww-tool-line.is-error { border-color: #8a4b4b; }
+
+/* 助手回复按文档排版，不铺灰底；用户气泡浅主色底（U-16） */
+.ww-assistant { max-width: 720px; }
+.ww-user-bubble { background: var(--ww-primary-soft); color: var(--ww-text); max-width: 85%; }
+
+/* 会话列表：… 菜单悬停/选中时才出现（U-33） */
+.ww-chat-item>.ant-dropdown-trigger { opacity: 0; transition: opacity .12s; }
+.ww-chat-item:hover>.ant-dropdown-trigger, .ww-chat-item:focus-within>.ant-dropdown-trigger { opacity: 1; }
+
+/* 空对话快捷入口：带说明的卡片（U-34） */
+.ww-quick-actions { margin-top: 28px; }
+.ww-quick-actions button { flex: 1; max-width: 210px; align-items: center; gap: 10px; border-radius: 12px; padding: 14px 12px; font-size: 13px; font-weight: 500; color: var(--ww-text); box-shadow: inset 0 0 0 1px var(--ww-border); }
+.ww-quick-actions button:hover { background: var(--ww-card); box-shadow: inset 0 0 0 1px var(--ww-primary); }
+.ww-quick-actions small { display: block; font-size: 11px; font-weight: 400; color: var(--ww-text-3); margin-top: 3px; }
+
+/* 知识库列表：两行紧凑行（U-19） */
+.ww-note-row { padding: 10px 2px; }
+.ww-note-row .ww-note-actions { opacity: 0; transition: opacity .12s; }
+.ww-note-row:hover .ww-note-actions, .ww-note-row:focus-within .ww-note-actions { opacity: 1; }
+@media (hover: none) { .ww-note-row .ww-note-actions { opacity: 1; } }
+
+/* 批量操作栏：选中后浮出（U-25） */
+.ww-batch-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--ww-border); background: var(--ww-card); box-shadow: 0 8px 24px rgba(15, 20, 32, .18); font-size: 13px; white-space: nowrap; }
+
+/* 录音：输入框上方红色计时条 + 结果卡（U-12、U-31） */
+.ww-rec-active { display: flex; align-items: center; gap: 10px; margin: 0 2px 6px; padding: 6px 12px; border-radius: 10px; background: color-mix(in srgb, #e5484d 10%, transparent); border: 1px solid color-mix(in srgb, #e5484d 35%, transparent); font-size: 12px; color: #c5373c; }
+.dark .ww-rec-active { color: #ff9ba0; }
+.ww-rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #e5484d; animation: ww-rec-pulse 1.2s ease-in-out infinite; flex-shrink: 0; }
+@keyframes ww-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.ww-rec-card { border: 1px solid var(--ww-border); border-radius: 12px; background: var(--ww-bg-soft); padding: 12px 14px; margin: 0 2px 6px; }
+
+/* 集合折叠（U-11） */
+.ww-nav-collapsible { cursor: pointer; }
+
+/* 笔记详情元信息行（U-23） */
+.ww-note-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 18px 10px; font-size: 12px; color: var(--ww-text-3); border-bottom: 1px solid var(--ww-border-2); }
+.ww-note-meta b { font-weight: 500; color: var(--ww-text-2); }
+.ww-citation-snippet mark { background: var(--ww-primary-soft); color: var(--ww-primary); border-radius: 3px; padding: 0 2px; }

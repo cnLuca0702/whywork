@@ -157,7 +157,7 @@ module.exports = {
     h.llm.script('r1-06', () => ({ reasoning: ['折叠推理内容RT'], text: 'R1-06正文' }))
     const chatId = await h.chat('RT-R1-06 折叠'); await h.send(chatId, '⟦SCN:r1-06⟧ x')
     await h.openChatUi('RT-R1-06 折叠')
-    const label = await h.needUi(h.chatPane().getByText(/已思考/), '“已思考”标签')
+    const label = await h.needUi(h.chatPane().getByText(/思考过程/), '“思考过程”标签')
     ok(/\d+\s*字/.test(await label.innerText()), '标签未显示字数')
     ok(!(await h.chatPane().getByText('折叠推理内容RT').isVisible().catch(() => false)), '推理默认未折叠')
     await label.click()
@@ -202,6 +202,7 @@ module.exports = {
     h.llm.script('r1-10', toolSeq([{ name: 'notes__create', args: { title: 'RT-R1-10 Agent 新建', body: '内容' } }], '已新建'))
     const chatId = await h.chat('RT-R1-10 重新生成提示'); await h.send(chatId, '⟦SCN:r1-10⟧ x', {}, { confirm: () => ({ approved: true }) })
     await h.openChatUi('RT-R1-10 重新生成提示')
+    await h.needUi(h.chatPane().locator('.ww-tool-title').getByText('新建笔记 · RT-R1-10 Agent 新建', { exact: true }), '工具中文名称与关键参数')
     await hoverAssistant(h)
     const mark = h.llm.mark()
     await (await h.needUi(h.chatPane().getByRole('button', { name: '重新生成' }), '“重新生成”按钮')).click()
@@ -548,12 +549,8 @@ module.exports = {
       await h.call('clip.blacklist_set', { items: [...old, '127.0.0.1'] })
       const total0 = (await h.call('notes.list', { limit: 1 })).total
       await h.toChat()
-      const direct = h.page.locator('.ww-chat-pane').getByRole('button', { name: /添加网页/ })
-      if (await h.exists(direct, 3000)) await direct.first().click()
-      else {
-        await (await h.needUi(h.page.locator('.ww-chat-pane').getByRole('button', { name: /^添\s*加$/ }), '“添加”按钮')).click()
-        await (await h.needUi(h.page.getByText('添加网页'), '“添加网页”')).click()
-      }
+      await (await h.needUi(h.page.locator('.ww-chat-pane').getByRole('button', { name: '添加文件', exact: true }), '附件菜单')).click()
+      await (await h.needUi(h.page.getByRole('menuitem', { name: '添加网页' }), '“添加网页”菜单项')).click()
       const urlInput = await h.needUi(h.page.locator('.ant-modal input, [role=dialog] input'), '网址输入框')
       await urlInput.fill(url); await h.page.locator('.ant-modal, [role=dialog]').getByRole('button', { name: /确\s*定|确\s*认|添\s*加/ }).last().click()
       await h.needUi(h.page.getByText(/黑名单/), '黑名单提示')
@@ -1238,6 +1235,19 @@ module.exports = {
     await h.settings({ 'media.asrBaseUrl': h.llmUrl, 'media.asrKey': 'synthetic-only', 'media.asrModel': 'whisper-rt' })
     await h.page.getByRole('navigation', { name: '工具竖栏' }).getByRole('button', { name: '录音', exact: true }).click()
     await h.needUi(h.page.locator('.ww-resource-pane').getByLabel(/语言/).or(h.page.locator('.ww-resource-pane').getByText(/语言/)), '录音语言选择')
+    // 模拟设备授权一直未返回，确认等待状态与取消入口可用。
+    await h.page.evaluate(() => {
+      window.__rtOriginalGetUserMedia = navigator.mediaDevices.getUserMedia
+      navigator.mediaDevices.getUserMedia = () => new Promise(() => {})
+    })
+    try {
+      await h.page.locator('.ww-resource-pane').getByRole('button', { name: /开始录音/ }).click()
+      await h.needUi(h.page.getByText('等待设备授权', { exact: true }), '等待设备授权状态')
+      await h.page.locator('.ww-resource-pane').getByRole('button', { name: '取消录音', exact: true }).click()
+      ok(await h.page.getByText('等待设备授权', { exact: true }).count() === 0, '取消后仍停留在授权等待')
+    } finally {
+      await h.page.evaluate(() => { navigator.mediaDevices.getUserMedia = window.__rtOriginalGetUserMedia; delete window.__rtOriginalGetUserMedia })
+    }
     // 隔离实例没有麦克风：有“合成音频验证”入口时用它，否则用普通开始按钮
     const synth = h.page.locator('.ww-resource-pane').getByRole('button', { name: /合成音频/ })
     if (await h.exists(synth, 2000)) await synth.click()
@@ -1249,6 +1259,17 @@ module.exports = {
     const save = h.page.getByRole('button', { name: /保存/ }); if (await h.exists(save, 3000)) await save.first().click()
     await h.needUi(h.page.getByText(/是否转写/), '转写提示')
     await h.needUi(h.page.getByText(/另有\s*\d+\s*条/), '待转写数量')
+    // 两个录音视图共享同一会话；每条纪要 delta 只能写入共享状态一次。
+    await h.page.getByRole('button', { name: '立即转写', exact: true }).first().click()
+    await h.needUi(h.page.getByRole('button', { name: '生成 / 重新生成纪要', exact: true }), '纪要按钮')
+    await h.bg(true)
+    h.llm.setBackground(() => ({ text: 'UI纪要唯一片段' }))
+    try {
+      await h.page.getByRole('button', { name: '生成 / 重新生成纪要', exact: true }).first().click()
+      await h.page.waitForFunction(() => [...document.querySelectorAll('.ww-rec-card .whitespace-pre-wrap')].some(e => e.textContent.includes('UI纪要唯一片段')))
+      const texts = await h.page.locator('.ww-rec-card .whitespace-pre-wrap').allTextContents()
+      ok(texts.length === 2 && texts.every(text => text === 'UI纪要唯一片段'), `纪要重复或两处状态不一致：${JSON.stringify(texts)}`)
+    } finally { h.llm.setBackground(null) }
     return '界面流程完整'
   },
 
@@ -1460,8 +1481,8 @@ module.exports = {
   },
   async 'RT-R19-05'(h) {
     await h.mk('RT-R19-05 页纲', '# 标题\n- 要点一\n- 要点二')
-    await h.page.getByRole('navigation', { name: '工具竖栏' }).getByRole('button', { name: 'Office 表格', exact: true }).click()
-    await h.page.locator('.ant-tabs-tabpane-active .ant-select').filter({ hasText: /选择.*笔记/ }).first().click()
+    await h.page.getByRole('navigation', { name: '工具竖栏' }).getByRole('button', { name: '表格与文档', exact: true }).click()
+    await h.page.locator('.ww-tool-page .ant-select').filter({ hasText: /选择.*笔记/ }).first().click()
     await h.page.locator('.ant-select-dropdown').getByText('RT-R19-05 页纲').last().click()
     await h.bg(true)
     await h.page.getByRole('button', { name: /AI 生成 PPT/ }).click()
@@ -1523,7 +1544,7 @@ module.exports = {
   },
   async 'RT-R21-02'(h) {
     await h.page.getByRole('navigation', { name: '工具竖栏' }).getByRole('button', { name: '日历', exact: true }).click()
-    await h.page.locator('.ant-tabs-tabpane-active').waitFor()
+    await h.page.locator('.ww-tool-page').waitFor()
     ok(!(await h.exists(h.page.getByText('连接系统日历'), 2000)), 'Linux 显示了系统日历入口')
     return '入口已隐藏'
   },
@@ -1532,9 +1553,10 @@ module.exports = {
   async 'RT-R22-01'(h) {
     await h.page.getByRole('navigation', { name: '工具竖栏' }).getByRole('button', { name: '设备绑定', exact: true }).click()
     await h.page.getByRole('button', { name: '生成配对码' }).click()
-    const t1 = await (await h.needUi(h.page.getByText(/\d+:\d{2}|剩余\s*\d+/), '倒计时')).innerText()
+    const countdown = h.page.locator('.ww-tool-page').getByText(/\d+:\d{2}|剩余\s*\d+/)
+    const t1 = await (await h.needUi(countdown, '倒计时')).innerText()
     await h.sleep(2200)
-    const t2 = await h.page.getByText(/\d+:\d{2}|剩余\s*\d+/).first().innerText()
+    const t2 = await countdown.first().innerText()
     ok(t1 !== t2, '倒计时没有变化')
     await h.page.getByRole('button', { name: '关闭服务' }).click()
     return `${t1} → ${t2}`

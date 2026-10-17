@@ -20,7 +20,7 @@ export default function StatusBar() {
     <div className="ww-status">
       <span>{t('status.ready')}</span>
       {version && <span>v{version}</span>}
-      <span className="ml-auto">BYOK · 本地运行</span>
+      <span className="ml-auto">{t('status.localRun')}</span>
     </div>
   )
 }

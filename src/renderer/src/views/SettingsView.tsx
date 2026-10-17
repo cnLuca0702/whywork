@@ -5,7 +5,7 @@ import {useChatStore} from '../store/chat'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Card, Input, message, Select, Switch, Tabs, Tag, Typography, Radio, Modal, Dropdown } from 'antd'
 import { FolderOpenOutlined, LoginOutlined, PlusOutlined, SettingOutlined, MoreOutlined } from '@ant-design/icons'
-import { sys, useSysEvent } from '../api'
+import { sys } from '../api'
 import { t } from '../i18n/zh'
 
 interface ProviderInfo {
@@ -122,8 +122,9 @@ function ProviderSettings({presets,saved,refresh}:{presets:PresetInfo[];saved:Pr
   const load=async()=>{setLoading(true);setCatalogError('');try{const r=await sys<{items:import('../store/chat').CatalogProvider[]}>('provider.models',{refresh:true});setCatalog(r.items)}catch(e){setCatalogError(String(e));setCatalog([])}finally{setLoading(false)}}
   const edit=(r:ProviderInfo)=>setEditor({saved:r,preset:known.find(p=>p.id===r.id)})
   const changed=()=>{setCatalog([]);refresh()}
-  return <section className="ww-provider-settings"><BackgroundModelSettings/>
+  return <section className="ww-provider-settings">
     <h2>AI 服务提供商</h2>
+    <p className="ww-page-desc">选择并配置模型来源；密钥仅保存在本机。</p>
     <Radio.Group aria-label="提供商类型" className="ww-provider-tabs" value={section} onChange={e=>setSection(e.target.value)} options={[{value:'codex',label:'Codex'},{value:'keys',label:'自定义 API 密钥'},{value:'custom',label:'自定义供应商'}]}/>
     {section==='codex'?<ChatGPTCard onChanged={changed}/>:<>
       <div className="ww-provider-notice">{section==='keys'?'选择已知供应商，使用你自己的 API 密钥。模型以该供应商返回的目录和你的配置为准。':'支持 OpenAI v1/chat/completions 兼容接口。'}</div>
@@ -142,6 +143,8 @@ function ProviderSettings({presets,saved,refresh}:{presets:PresetInfo[];saved:Pr
       {catalogError&&<div role="alert">{catalogError}</div>}
       <p className="text-xs text-[var(--ww-text-3)]">目录刷新不调用模型推理。聊天中可分别选择不同供应商的模型。</p>
     </>}
+    {/* 后台任务模型排在供应商配置之后（U-29） */}
+    <BackgroundModelSettings/>
     {editor&&<ProviderEditor key={editor.saved?.id??editor.preset?.id??'new'} preset={editor.preset} saved={editor.saved} known={known} onClose={()=>setEditor(null)} onSaved={changed}/>}
   </section>
 }
@@ -173,7 +176,7 @@ function ChatGPTCard({ onChanged }: { onChanged: () => void }) {
       {status.needsRefresh&&<div>会话需要刷新；若已被撤销，将提示重新登录。</div>}
       {status.model&&<div>当前模型：{status.model}</div>}
       <div className="flex flex-wrap gap-2">
-        <Button size="small" type="primary" icon={<LoginOutlined/>} loading={busy} disabled={!!status.pending&&!busy} onClick={()=>void login()}>Continue with ChatGPT</Button>
+        <Button size="small" type="primary" icon={<LoginOutlined/>} loading={busy} disabled={!!status.pending&&!busy} onClick={()=>void login()}>使用 ChatGPT 账号登录</Button>
         {(busy||status.pending)&&<Button size="small" onClick={()=>void sys('provider.chatgpt_cancel_login').then(refresh).catch(e=>message.error(String(e)))}>取消登录</Button>}
         {status.loggedIn&&<>
           <Button size="small" disabled={busy} onClick={()=>void sys('provider.chatgpt_models').then(()=>{refresh();onChanged()}).catch(e=>message.error(String(e)))}>刷新模型</Button>
@@ -613,9 +616,9 @@ export default function SettingsView() {
 
   return (
     <div className="h-full overflow-y-auto p-6">
-      <div className="max-w-3xl">
-        <Tabs defaultActiveKey="providers"
-          items={[
+      {/* 标签超过 6 个：左侧竖向导航，避免最小窗口下截断（U-06、§4.4） */}
+      <Tabs className="ww-settings-tabs" tabPosition="left" defaultActiveKey="providers"
+        items={[
             {key:'shortcuts',label:t('shortcuts.title'),children:<ShortcutSettings/>},
             {key:'personalization',label:t('profile.title'),children:<Personalization/>},
             {
@@ -678,9 +681,6 @@ export default function SettingsView() {
             }
           ]}
         />
-      </div>
     </div>
   )
 }
-
-void useSysEvent
