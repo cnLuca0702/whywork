@@ -20,6 +20,8 @@ export const zh = {
 'calendar.todayLabel':'今天',
 'calendar.noEventsToday':'今天暂无日程',
 'calendar.noEventsWeek':'本周暂无日程',
+'calendar.allDay':'全天',
+'calendar.crossDay':'跨天',
 'calendar.connect':'连接系统日历',
 'calendar.authorized':'已授权',
 'calendar.restricted':'访问受限',
