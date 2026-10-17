@@ -1,0 +1,68 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/dmg.yml
+      - electron-builder.config.cjs
+      - scripts/build-calendar.cjs
+      - scripts/build-share.cjs
+
+permissions:
+  contents: read
+
+jobs:
+  dmg:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify Apple Silicon build host
+        run: test "$(uname -m)" = arm64
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm rebuild better-sqlite3 --runtime=node
+      - run: npm test
+      - run: npx electron-rebuild -f -w better-sqlite3
+      - run: npm run prepare:ocr
+      - run: npm run build
+      - run: npm run check:share
+      - run: npm run dist:mac -- --arm64
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify packaged app and disk image
+        shell: bash
+        run: |
+          set -euo pipefail
+          app=release/mac-arm64/WhyWork.app
+          codesign --verify --deep --strict "$app"
+          lipo -verify_arch arm64 "$app/Contents/MacOS/WhyWork"
+          lipo -verify_arch arm64 "$app/Contents/Resources/WhyWorkCalendar"
+          lipo -verify_arch arm64 "$app/Contents/PlugIns/WhyWorkShare.appex/Contents/MacOS/WhyWorkShare"
+          "$app/Contents/MacOS/WhyWork" --smoke-test
+          "$app/Contents/MacOS/WhyWork" --core-check
+          for dmg in release/*.dmg; do hdiutil verify "$dmg"; done
+          shasum -a 256 release/*.dmg > release/SHA256SUMS.txt
+          {
+            echo "Source commit: $GITHUB_SHA"
+            echo "Build: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "Architecture: arm64"
+            echo "Signature: ad-hoc (not Developer ID signed or notarized)"
+            cat release/SHA256SUMS.txt
+          } | tee release/BUILD-INFO.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WhyWork-macOS-arm64-${{ github.sha }}
+          path: |
+            release/*.dmg
+            release/SHA256SUMS.txt
+            release/BUILD-INFO.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
