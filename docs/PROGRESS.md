@@ -307,3 +307,12 @@
   - `npm run check:ui`：20 张亮暗视图全部 PASS（报告 release/verification/ui/2026-10-17T04-41-19-371Z）。
 - 状态边界：本地提交，仅用于交接比较；不推送 GitHub，等待用户与 Codex 复检；macOS 实机验收、新签名包（D7）、真实服务 U1~U7、远程 CI 仍待外部条件。
 
+### 2026-10-17 保留 antigravity 并交付新版 DMG
+- 用户选定保留 antigravity：`f16bc85` 已同步 GitHub main；zcode 对比分支未合并。后续仅新增打包工作流和交付文档，应用源码保持 antigravity 版本。
+- 新增 `.github/workflows/dmg.yml`，支持手动构建；打包配置或该工作流变更时自动运行。最初两次构建发现并修正了工作流的 OCR 准备顺序与 lipo 参数顺序。
+- 成功构建源提交：`458b4acc87ff3dbce763a6577a311c22e689a0c9`。macOS arm64 构建运行：[39009072329](https://github.com/cnLuca0702/whywork/actions/runs/39009072329)。类型检查、172/172 单测、生产构建、Swift 分享组件检查、包内冒烟和核心检查全部通过；codesign 深度严格校验、主程序/日历助手/分享扩展 arm64 架构校验、hdiutil 镜像校验通过。
+- 产物：`release/WhyWork-0.1.0-arm64.dmg`，227127734 字节；已下载回本地并验证 ZIP 与 DMG 校验值。[GitHub Actions 产物](https://github.com/cnLuca0702/whywork/actions/runs/39009072329/artifacts/12092506074) 保留至 2026-11-16。
+- DMG SHA-256：`55311d949f69a45a1df3f21f381611682820b93b1878c37045925286060df3ab`。同目录 `BUILD-INFO.txt` 与 `SHA256SUMS.txt` 记录来源和校验值。
+- D7 新版 ad-hoc 签名包已生成；未进行 Developer ID 签名或 Apple 公证。macOS 真实日历授权、分享菜单、真实服务 U1~U7 等人工验收仍待完成。
+- 远程完整回归并非全绿：`f16bc85` 的 Desktop regression 运行 39006946418 在 `check:cases` 的 MEDIA-08 失败（媒体 fixture 的绝对路径被工作区路径检查拒绝），导致其后 UI/R 验收跳过；该问题独立于本次日历修复与已成功的 DMG 打包验证，尚未修改。
+

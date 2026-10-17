@@ -37,6 +37,8 @@ npm run check:share
 
 安装 Xcode 命令行工具（原生分享扩展使用 Swift/AppKit）。先构建，再执行 `npm run dist:mac`。产物位于 `release/`，本机 ad-hoc 签名，不含开发者公证或公开发布。
 
+也可在 GitHub Actions 手动运行 **Build macOS DMG**，使用当前所选分支构建 Apple Silicon（arm64）安装包。流程准备 OCR 语言包、运行类型检查和单测、编译 Swift 组件，并验证打包后的签名、架构、冒烟与核心检查。成功后从该次运行的 Artifacts 下载 DMG、`BUILD-INFO.txt` 和 `SHA256SUMS.txt`（保留 30 天）。此流程不创建 GitHub Release；完整回归 CI 与人工验收状态另行记录在 `docs/PROGRESS.md`。
+
 默认个人工作区 `~/Documents/WhyWork`；工作区配置、运行数据库、密钥、模型、缓存、依赖和测试运行产物均不应上传 Git。供应商密钥由用户在设置页自行填写，真实邮箱发送需要再次确认。
 
 Office 支持工作区 XLSX 副本的值、公式、常用格式、合并和行列尺寸写回；DOCX 基本 Markdown 结构与工作区图片导出/导入；PPTX 按页纲生成。复杂分页、图表、透视表、宏和任意 Office 文件无损往返不在当前兼容承诺内。Android和局域网配对是后续项目。
