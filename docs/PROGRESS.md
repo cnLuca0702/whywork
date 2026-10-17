@@ -275,3 +275,11 @@
 - 交互复验（隔离实例注入 ICS）：P2-1 三断言（切换后仍过滤/草稿保留/清空恢复全量）与 P2-2 全部通过——今天视图单一分组"今天·5"、跨天裁剪 00:00–01:00+跨天标记、全天/零时长(单时刻)显示、上周进行中事件归周一且逐日展开 7 行（截图 /tmp/ww-cal-fixed-today.png、/tmp/ww-cal-fixed-week2.png）。复检原复现脚本在修复后于"等待跨天会议可见"处超时——即 bug 行为已消失。
 - 复检确认项已记录：周一边界正确；dayjs 其它用途不受 zh-cn locale 影响；警告色对比度亮 4.69 / 暗 7.53；Linux 系统日历入口保持隐藏。
 - 未完成不变：macOS 实机验收、新签名包、真实服务 U1~U7、GitHub CI 远程观察。本轮不推送，待再次复检。
+
+### 2026-10-17 Codex 三轮复检问题修复（U-35 三轮）
+- 复检结论：仍未通过、不推送；两个新 P2 属实（复现脚本 /tmp/whywork-calendar-round3.cjs，日志 .log）。
+- P2-1 未提交草稿清空：antd Input.Search 清空按钮先触发 onSearch('')，旧实现 search() 忽略传入值读取旧 draft 导致错误提交；随后 onChange 的 committed 闭包仍为旧值未覆盖。修复：搜索提交抽为纯函数 calendarSearchReducer——onSearch 一律以 antd 传入的实际 value 提交（trim），onChange 空值无条件将 draft/committed 同时归空；onSearch/onChange 两种到达顺序均收敛（有单测覆盖两种顺序）。
+- P2-2 午夜零时长点事件：半开区间 [start,end) 与当日求交对零宽事件恒为空集，周日内任何一天的 00:00 点事件整组消失。修复：逐日归组抽为纯函数 agendaRowsForRange——点事件（end<=start）显式按 dayStart<=start<dayEnd 归入所在日，区间事件保持半开交集；crossDay 定义改为“内容跨过一个以上自然日”（恰至次日 00:00 的单日全天不再误标跨天）。服务端边界核对：calendar.search 的 SQL（end>from AND start<to）对 from 边界点事件返回、to 边界不返回，与前端半开语义一致。
+- 可重复自动化断言（Codex 要求）：新增 tests/calendar-agenda.test.ts 11 项——午夜/14:00 点事件归组、跨天裁剪 00:00、全天不误标跨天、上周进行中归周一逐日展开且 dayKey 唯一、范围外/to 边界排除、from 边界点事件归入；reducer 四项（未提交草稿清空双顺序、onSearch 用传入值、onChange 非空不动 committed、已提交清空回归）。
+- 验证：typecheck 0 错；164/164 单测（新增 11）；build；R21 2 PASS/1 MANUAL（release/verification/remio-r/2026-10-17T04-12-16-281Z）；check:ui 20 张亮暗（release/verification/ui/2026-10-17T04-12-24-930Z）；Codex round3 复现脚本原样重跑：clearUnsubmitted overnight 0→1、zeroLength midnightVisible 0→1、committedSwitch/clearCommitted/race(stale 0) 全部符合预期。
+- 未完成不变：macOS 实机验收、新签名包、真实服务 U1~U7、GitHub CI 远程观察。本轮不推送，待复检。
