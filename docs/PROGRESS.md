@@ -258,3 +258,10 @@
 - 报告：release/verification/remio-r/2026-10-17T03-14-25-390Z/report.json 与 2026-10-17T03-16-34-546Z/report.json，按现有规则仅保留本机；重跑命令见 UI-REVIEW.md。
 - 交接 zcode：先读 UI-REVIEW.md 文末及本节，再按 TASKS-HANDOFF.md 接续。U-35（日历今天/本周视图）、U-36 剩余颜色令牌、macOS 实机验收仍未完成，不可标为全部交付。新 UI 未包含在历史 DMG 中；GitHub CI 需另核实。
 - 用户已授权将当前 UI 改动、评审修复、测试及文档提交并推送 GitHub。后续以包含本节的提交为新基线，避免重复实施已修复内容。
+
+### 2026-10-17 U-35/U-36 收口与 Codex 复检交接
+- U-35：新增 `components/CalendarPanel.tsx`，日历支持「今天/本周/列表」分段视图；议程按日期分组（今天/日期+星期·条数），行内时间/标题/地点/来源，按开始时间排序；范围由 `calendar.search` from/to 服务端过滤；周一起始（dayjs zh-cn）；ToolsView 移除内联日历状态。
+- U-36：新增语义令牌 danger/danger-border/warn/warn-soft/accent-soft/overlay/border-strong；迁移 TSX 与 global.css 全部剩余写死色值；renderer TSX 已无十六进制色值（main.tsx 的 antd 主题定义除外）。快捷入口装饰色维持保留决定。
+- 验证：typecheck ✅；153/153 单测 ✅；build ✅；check:ui 10 视图×两主题 PASS（含 source-path/<!-- 断言）；R21 验收 2/2 PASS（release/verification/remio-r/2026-10-17T03-35-54-844Z）；日历议程注入 ICS 交互验证：今天过滤+排序+地点、周边界（周六→周日仍在本周）、无重复行、列表全量，均通过；周视图截图目检分组/行内信息正常。
+- 未完成不变：macOS 实机验收、新签名包（D7）、真实服务 U1~U7、GitHub CI 远程观察。
+- 下一步：交 Codex 复检本轮 diff（U-35/U-36 实现与验证），确认后可推送。

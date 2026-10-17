@@ -84,7 +84,7 @@ body,
   margin: 0.6em 0;
 }
 .pm-editor .ProseMirror pre {
-  background: #f6f8fa;
+  background: var(--ww-code-bg);
   border-radius: 6px;
   padding: 10px 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -96,31 +96,31 @@ body,
 }
 .pm-editor .ProseMirror hr {
   border: none;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--ww-border);
   margin: 1.2em 0;
 }
 
 /* 预览模式 wikilink 徽章 */
 .wikilink-chip {
-  color: #2563eb;
+  color: var(--ww-link);
   background: rgba(37, 99, 235, 0.08);
   border-radius: 4px;
   padding: 0 4px;
   cursor: pointer;
 }
-.dark .wikilink-chip { color: #7ab0ff; background: rgba(122, 176, 255, 0.1); }
+.dark .wikilink-chip { color: var(--ww-link); background: rgba(122, 176, 255, 0.1); }
 .wikilink-chip:hover { text-decoration: underline; }
 
 /* wikilink 徽章 */
 .pm-editor .pm-wikilink,
 span.pm-wikilink {
-  color: #2563eb;
+  color: var(--ww-link);
   background: rgba(37, 99, 235, 0.08);
   border-radius: 4px;
   padding: 0 4px;
   cursor: pointer;
 }
-.dark .pm-wikilink { color: #7ab0ff; background: rgba(122, 176, 255, 0.1); }
+.dark .pm-wikilink { color: var(--ww-link); background: rgba(122, 176, 255, 0.1); }
 
 /* 行内代码 */
 code.pm-inline-code {
@@ -143,7 +143,7 @@ code.pm-inline-code {
 .pm-math-input {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
-  border: 1px solid #d0d0d0;
+  border: 1px solid var(--ww-code-border);
   border-radius: 4px;
   padding: 2px 6px;
   min-width: 120px;
@@ -151,21 +151,21 @@ code.pm-inline-code {
 
 /* 代码块 NodeView */
 .pm-codeblock {
-  border: 1px solid #e2e2e2;
+  border: 1px solid var(--ww-code-border);
   border-radius: 8px;
   overflow: hidden;
   margin: 0.6em 0;
 }
 .pm-codeblock-lang {
   font-size: 11px;
-  color: #888;
-  background: #f3f3f3;
+  color: var(--ww-text-3);
+  background: var(--ww-bg-soft);
   padding: 2px 10px;
-  border-bottom: 1px solid #e6e6e6;
+  border-bottom: 1px solid var(--ww-code-border);
   user-select: none;
 }
-.dark .pm-codeblock { border-color: #333; }
-.dark .pm-codeblock-lang { background: #202020; color: #999; border-bottom-color: #333; }
+.dark .pm-codeblock { border-color: var(--ww-code-border); }
+.dark .pm-codeblock-lang { background: var(--ww-code-bg); color: var(--ww-text-2); border-bottom-color: var(--ww-code-border); }
 .pm-codeblock .cm-editor { background: transparent; font-size: 13px; }
 .pm-codeblock .cm-editor.cm-focused { outline: none; }
 
@@ -236,7 +236,7 @@ code.pm-inline-code {
 button:focus-visible { outline:2px solid var(--ww-primary); outline-offset:2px; }
 
 /* Dark controls keep their boundaries and hints visible against the surface. */
-.dark .ww-composer { border-color:#626d80; }
+.dark .ww-composer { border-color:var(--ww-border-strong); }
 .dark .ww-composer:focus-within { border-color:var(--ww-primary); }
 .dark .pm-editor .ProseMirror a { color:var(--ww-primary); text-decoration:underline; }
 .dark .pm-editor .ProseMirror a:hover { color:var(--ww-primary-hover); }
@@ -403,8 +403,8 @@ textarea.ant-input:disabled,
 .ww-markdown table { display: block; overflow-x: auto; border-collapse: collapse; }
 .ww-markdown th, .ww-markdown td { border: 1px solid var(--ww-border); padding: 6px; }
 .ww-markdown .hljs-keyword, .ww-markdown .hljs-selector-tag { color: var(--ww-primary); }
-.ww-markdown .hljs-string { color: #28804a; }
-.dark .ww-markdown .hljs-string { color: #8ed9a8; }
+.ww-markdown .hljs-string { color: var(--ww-code-string); }
+.dark .ww-markdown .hljs-string { color: var(--ww-code-string); }
 .ww-markdown .hljs-comment { color: var(--ww-text-2); }
 .ww-reply-actions { display: flex; gap: 6px; opacity: 0; }
 .ww-assistant:hover .ww-reply-actions, .ww-assistant:focus-within .ww-reply-actions { opacity: 1; }
@@ -418,10 +418,16 @@ textarea.ant-input:disabled,
   --ww-space-1: 4px; --ww-space-2: 8px; --ww-space-3: 12px; --ww-space-4: 16px;
   --ww-code-bg: #f6f8fa; --ww-code-text: #24292f; --ww-code-border: #e2e6eb; --ww-code-string: #28804a;
   --ww-link: #2563eb;
+  --ww-danger: #c5373c; --ww-danger-border: #e88080;
+  --ww-warn: #b45309; --ww-warn-soft: #fff7e0;
+  --ww-accent-soft: #edf4ff; --ww-overlay: #ffffff; --ww-border-strong: #d9dce3;
 }
 .dark {
   --ww-code-bg: #161b26; --ww-code-text: #e6edf3; --ww-code-border: #2a3040; --ww-code-string: #8ed9a8;
   --ww-link: #7ab0ff;
+  --ww-danger: #ff9ba0; --ww-danger-border: #8a4b4b;
+  --ww-warn: #e8b662; --ww-warn-soft: #332b1a;
+  --ww-accent-soft: #1c2a4a; --ww-overlay: #20232b; --ww-border-strong: #626d80;
 }
 
 /* 代码块统一令牌：对话与笔记同一套底色/正文色，两种主题对比度 ≥ 4.5:1（U-05） */
@@ -476,8 +482,8 @@ span.pm-wikilink { color: var(--ww-link); }
 .ww-tool-line .ww-tool-detail>summary { list-style: none; user-select: none; }
 .ww-tool-line .ww-tool-detail>summary::-webkit-details-marker { display: none; }
 .ww-tool-line .ww-tool-detail pre { margin: 6px 0 0; padding: 8px; border-radius: 6px; background: var(--ww-code-bg); color: var(--ww-code-text); font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; }
-.ww-tool-line.is-error { border-color: #e88080; }
-.dark .ww-tool-line.is-error { border-color: #8a4b4b; }
+.ww-tool-line.is-error { border-color: var(--ww-danger-border); }
+.dark .ww-tool-line.is-error { border-color: var(--ww-danger-border); }
 
 /* 助手回复按文档排版，不铺灰底；用户气泡浅主色底（U-16） */
 .ww-assistant { max-width: 720px; }
@@ -503,7 +509,7 @@ span.pm-wikilink { color: var(--ww-link); }
 .ww-batch-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--ww-border); background: var(--ww-card); box-shadow: 0 8px 24px rgba(15, 20, 32, .18); font-size: 13px; white-space: nowrap; }
 
 /* 录音：输入框上方红色计时条 + 结果卡（U-12、U-31） */
-.ww-rec-active { display: flex; align-items: center; gap: 10px; margin: 0 2px 6px; padding: 6px 12px; border-radius: 10px; background: color-mix(in srgb, #e5484d 10%, transparent); border: 1px solid color-mix(in srgb, #e5484d 35%, transparent); font-size: 12px; color: #c5373c; }
+.ww-rec-active { display: flex; align-items: center; gap: 10px; margin: 0 2px 6px; padding: 6px 12px; border-radius: 10px; background: color-mix(in srgb, var(--ww-danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ww-danger) 35%, transparent); font-size: 12px; color: var(--ww-danger); }
 .dark .ww-rec-active { color: #ff9ba0; }
 .ww-rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #e5484d; animation: ww-rec-pulse 1.2s ease-in-out infinite; flex-shrink: 0; }
 @keyframes ww-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }

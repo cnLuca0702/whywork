@@ -3,11 +3,12 @@ import SlideOutline,{type Outline} from '../components/SlideOutline'
 import MailPreview from '../components/MailPreview'
 import {t} from '../i18n/zh'
 import {lazy,Suspense,useEffect,useState} from 'react'
-import {Alert,Button,Card,Form,Input,Modal,Select,Spin,Table,message} from 'antd'
+import {Alert,Button,Card,Form,Input,Modal,Select,Spin,message} from 'antd'
 import {sys,useSysEvent} from '../api'
 import {useUiStore} from '../store/ui'
 import type {WorkbookSnapshot} from '../../../shared/office'
 import CaptureTools from './CaptureTools'
+import CalendarPanel from '../components/CalendarPanel'
 const OfficeSheet=lazy(()=>import('./OfficeSheet'))
 interface Note {noteId:string;title:string}
 interface Account {id:string;name:string;host:string;port:number;user:string;smtp_host:string|null;smtp_port:number}
@@ -40,9 +41,8 @@ function MailAccountForm({accounts,accountId,setAccountId,busy,run,loadAccounts}
 
 export default function ToolsView() {
  const [outline,setOutline]=useState<Outline|null>(null)
- const [clock,setClock]=useState(Date.now()),[systemCalendar,setSystemCalendar]=useState<{supported:boolean;authorization:string}|null>(null)
+ const [clock,setClock]=useState(Date.now())
  const [qr,setQr]=useState<{qr:string;expires:number;scope:string}|null>(null),[devices,setDevices]=useState<{device_id:string;name:string;platform:string}[]>([])
- useEffect(()=>{void sys<{supported:boolean;authorization:string}>('calendar.system_status').then(setSystemCalendar).catch(()=>undefined)},[])
  // 倒计时只在配对码存在时走表，避免整页每秒重渲
  useEffect(()=>{if(!qr)return;const timer=setInterval(()=>setClock(Date.now()),1000);return()=>clearInterval(timer)},[qr])
  useSysEvent('pair.bound',p=>{setQr(null);message.success(t('pair.bound',{name:(p as {name:string}).name}));void loadDevices()})
@@ -51,17 +51,16 @@ export default function ToolsView() {
  const [mailPreview,setMailPreview]=useState<Record<string,string>|null>(null)
  const [busy,setBusy]=useState(false),[notes,setNotes]=useState<Note[]>([]),[noteId,setNoteId]=useState<string>()
  const [opened,setOpened]=useState<{sessionId:string;snapshot:WorkbookSnapshot;warning:string}|null>(null)
- const [output,setOutput]=useState(''),[calendar,setCalendar]=useState<Record<string,unknown>[]>([]),[calendarQuery,setCalendarQuery]=useState('')
+ const [output,setOutput]=useState('')
  const [accounts,setAccounts]=useState<Account[]>([]),[accountId,setAccountId]=useState<string>()
  const [to,setTo]=useState(''),[subject,setSubject]=useState(''),[body,setBody]=useState('')
  const [url,setUrl]=useState(''),[pageText,setPageText]=useState('')
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);try{await fn()}catch(e){void message.error(String(e))}finally{setBusy(false)}}
  const loadAccounts=()=>sys<{items:Account[]}>('mail.accounts').then(r=>setAccounts(r.items))
  const loadDevices=()=>sys<{items:typeof devices}>('pair.devices').then(r=>setDevices(r.items))
- const searchCalendar=()=>sys<{items:Record<string,unknown>[]}>('calendar.search',{query:calendarQuery}).then(r=>setCalendar(r.items))
  useEffect(()=>{
   void sys<{items:Note[]}>('notes.list',{limit:200}).then(r=>setNotes(r.items)).catch(()=>undefined)
-  void loadAccounts().catch(()=>undefined);void loadDevices().catch(()=>undefined);void searchCalendar().catch(()=>undefined)
+  void loadAccounts().catch(()=>undefined);void loadDevices().catch(()=>undefined)
   return()=>{void sys('pair.stop').catch(()=>undefined)}
  },[])
  if(opened)return <Suspense fallback={<Spin/>}><OfficeSheet {...opened} onClose={()=>setOpened(null)}/></Suspense>
@@ -80,9 +79,7 @@ export default function ToolsView() {
     {output&&<div className="flex items-center gap-2"><span className="min-w-0 flex-1 truncate">{output}</span><Button onClick={()=>void run(async()=>{await sys('export.copy_file',{path:output})})}>另存为</Button></div>}
     <Alert type="info" showIcon message="Word 保留基本格式、列表、表格、链接与工作区图片；复杂版式和数学公式排版暂不还原。AI 生成内容请核对后使用。"/></div></Card>
   </div>,
-  calendar:<Card title={t('calendar.title')}>{systemCalendar?.supported&&<div className="mb-4"><Button loading={busy} onClick={()=>void run(async()=>{const r=await sys<{supported:boolean;authorization:string}>('calendar.connect_system');setSystemCalendar(r);await searchCalendar()})}>{t('calendar.connect')}</Button><span className="ml-2">{t(systemCalendar.authorization==='authorized'?'calendar.authorized':systemCalendar.authorization==='restricted'?'calendar.restricted':'calendar.denied')}</span></div>}<div className="mb-4 flex gap-2"><Button type="primary" loading={busy} onClick={()=>void run(async()=>{await sys('calendar.import');await searchCalendar()})}>导入日历</Button><Input.Search placeholder="搜索事件" value={calendarQuery} onChange={e=>setCalendarQuery(e.target.value)} onSearch={()=>void searchCalendar()}/></div>
-    <Table size="small" rowKey="id" dataSource={calendar} columns={[{title:'事件',dataIndex:'title'},{title:'开始',dataIndex:'start',render:value=>new Date(Number(value)).toLocaleString()},{title:'地点',dataIndex:'location'},{title:t('calendar.source'),dataIndex:'source',render:value=>value==='system'?t('calendar.system'):'ICS'}]}/>
-  </Card>,
+  calendar:<CalendarPanel/>,
   mail:<div className="space-y-4">
     <MailAccountForm accounts={accounts} accountId={accountId} setAccountId={setAccountId} busy={busy} run={run} loadAccounts={loadAccounts}/>
     <Card title="发送邮件"><Form layout="vertical" className="max-w-md"><div className="space-y-2">

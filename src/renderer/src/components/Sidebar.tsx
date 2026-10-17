@@ -104,7 +104,7 @@ function CollectionsSection() {
               }}
               className={`mb-0.5 flex w-full items-center gap-2 truncate rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
                 collectionId === c.id
-                  ? 'bg-blue-50 font-medium text-[var(--ww-primary)] dark:bg-[#1c2a4a] dark:text-blue-300'
+                  ? 'bg-[var(--ww-accent-soft)] font-medium text-[var(--ww-primary)]'
                   : 'text-[var(--ww-text-2)] hover:bg-[var(--ww-hover)]'
               }`}
             >

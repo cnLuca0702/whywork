@@ -319,7 +319,7 @@ export default function NotesView() {
 
       {dragOver && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="rounded-xl border-2 border-dashed border-blue-400 bg-white/95 px-16 py-10 text-center dark:bg-[#222]/95">
+          <div className="rounded-xl border-2 border-dashed border-[var(--ww-primary)] bg-[var(--ww-overlay)]/95 px-16 py-10 text-center">
             <FileTextOutlined style={{ fontSize: 32 }} className="text-[var(--ww-primary)]" />
             <div className="mt-3 font-medium">松开以导入</div>
             <div className="text-xs text-[var(--ww-text-3)]">支持 .md / .txt / .docx / .pdf</div>

@@ -279,7 +279,7 @@ export default function NoteEditor({ noteId, initialBody, onSave, titles }: Note
         ].map((b, i) => (
           <Tooltip key={i} title={b.title}>
             <button
-              className="rounded px-2 py-1 text-sm text-[var(--ww-text-2)] hover:bg-[var(--ww-hover)] dark:text-[var(--ww-text-3)] dark:hover:bg-[#2a2a2a]"
+              className="rounded px-2 py-1 text-sm text-[var(--ww-text-2)] hover:bg-[var(--ww-hover)] dark:text-[var(--ww-text-3)]"
               onClick={b.fn}
               type="button"
             >
@@ -301,7 +301,7 @@ export default function NoteEditor({ noteId, initialBody, onSave, titles }: Note
             <button
               key={item}
               className={`block w-full truncate rounded px-3 py-1.5 text-left text-sm ${
-                i === s.active ? 'bg-blue-50 text-[var(--ww-primary)] dark:bg-[#1c2a4a]' : 'hover:bg-[var(--ww-hover)]'
+                i === s.active ? 'bg-[var(--ww-accent-soft)] text-[var(--ww-primary)]' : 'hover:bg-[var(--ww-hover)]'
               }`}
               onClick={() => {
                 const view = viewRef.current

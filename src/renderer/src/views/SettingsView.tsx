@@ -419,7 +419,7 @@ function McpCard() {
             </Button>
           </div>
         ))}
-        <div className="space-y-2 rounded-md border border-dashed border-[var(--ww-border)] p-3 dark:border-[#404040]">
+        <div className="space-y-2 rounded-md border border-dashed border-[var(--ww-border)] p-3">
           <div className="text-xs font-medium text-[var(--ww-text-3)]">添加服务器</div>
           <Select value={transport} onChange={setTransport} options={[{value:'stdio',label:'stdio'},{value:'http',label:'HTTP'}]}/>
           {transport==='http'&&<><Input placeholder={t('mcp.url')} value={url} onChange={e=>setUrl(e.target.value)}/><Input.Password placeholder={t('mcp.token')} value={token} onChange={e=>setToken(e.target.value)}/><Input placeholder={t('mcp.header')} value={tokenHeader} onChange={e=>setTokenHeader(e.target.value)}/></>}

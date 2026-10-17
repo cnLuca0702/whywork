@@ -243,7 +243,7 @@ export default function NoteDetailView() {
           <NoteInsights key={activeNoteId} noteId={activeNoteId!}/>
         </article>
 
-        <aside className="ww-note-links w-48 shrink-0 overflow-y-auto border-l border-gray-200 px-4 py-3 text-sm dark:border-[#2a2a2a] lg:block">
+        <aside className="ww-note-links w-48 shrink-0 overflow-y-auto border-l border-[var(--ww-border)] px-4 py-3 text-sm lg:block">
           <div className="mb-1 text-xs font-medium text-[var(--ww-text-3)]">出链（{links.out.length}）</div>
           <div className="mb-4 flex flex-wrap gap-1">
             {links.out.length === 0 && <span className="text-xs text-[var(--ww-text-3)]">无</span>}
@@ -253,7 +253,7 @@ export default function NoteDetailView() {
                 className={`rounded border px-1.5 py-0.5 text-xs ${
                   l.targetNoteId
                     ? 'border-[var(--ww-primary)] text-[var(--ww-primary)] hover:bg-[var(--ww-primary-soft)] dark:text-blue-300'
-                    : 'border-dashed border-[var(--ww-border)] text-[var(--ww-text-3)] hover:bg-gray-50 dark:border-gray-600'
+                    : 'border-dashed border-[var(--ww-border)] text-[var(--ww-text-3)] hover:bg-[var(--ww-hover)]'
                 }`}
                 onClick={() => void onWikiClick(l.targetText!)}
                 title={l.targetNoteId ? '跳转' : '未解析，点击创建'}
@@ -269,7 +269,7 @@ export default function NoteDetailView() {
             {links.in.map((l) => (
               <button
                 key={l.id}
-                className="rounded bg-[var(--ww-hover)] px-1.5 py-0.5 text-xs text-[var(--ww-text-2)] hover:bg-gray-200 dark:bg-[#2a2a2a] dark:text-[var(--ww-text-3)]"
+                className="rounded bg-[var(--ww-hover)] px-1.5 py-0.5 text-xs text-[var(--ww-text-2)] hover:bg-[var(--ww-primary-soft)] dark:text-[var(--ww-text-3)]"
                 onClick={() => setActiveNote(l.sourceNoteId!)}
               >
                 {l.sourceTitle}
@@ -289,7 +289,7 @@ export default function NoteDetailView() {
           )}
 
           {unresolved.length > 0 && (
-            <div className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-600 dark:bg-[#332b1a]">
+            <div className="mt-2 rounded bg-[var(--ww-warn-soft)] p-2 text-xs text-[var(--ww-warn)]">
               {unresolved.length} 条未解析链接——点击虚线标签可直接创建对应笔记。
             </div>
           )}

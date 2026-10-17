@@ -1,7 +1,7 @@
 # WhyWork 界面评审：美观性与操作合理性
 
 - 评审日期：2026-10-16
-- **状态更新（2026-10-16 晚）：U-01～U-34、U-36（部分）、U-37 已完成修复，验证见文末「七、修复记录」；U-35（日历日程视图）未实施。**
+- **状态更新（2026-10-17）：U-01～U-34、U-36、U-37 已完成；U-35（今天/本周议程）已于 2026-10-17 补齐。除 macOS 实机验收与新包外，本清单开发项全部收口。**
 - 评审对象：main 工作区当前构建（R1–R22 完成后，`npm run build` 于 2026-10-16 01:10）
 - 证据：`npm run check:ui` 的十个视图亮暗截图、REMIO-R 验收运行中的界面截图、在隔离实例中补拍的有内容状态和 1024×700 最小窗口截图。关键截图已复制到 `docs/ui-review/`。
 - 排除项：截图里的 `⟦SCN:…⟧`、`RT-` 前缀名称、“合成音频验证”按钮都来自测试数据或 `--ui-check` 模式，不计入问题。
@@ -253,10 +253,15 @@
 - NoteInsights OCR 轮询在全部终态后自停。
 - `chat.tool` 事件补带 args，工具行可显示参数。
 
-### 未实施
+### 2026-10-17 补齐（U-35 / U-36 收口）
 
-- **U-35**（日历"今天/本周"日程视图）：属新增功能而非缺陷修复，留待后续排期。
-- U-36 的快捷入口装饰色（is-green/blue 等）保留原实现（已有暗色覆盖）。
+- **U-35 已实施**：日历面板抽出为 `CalendarPanel`，新增「今天 / 本周 / 列表」分段切换；议程按日期分组（标题含日期与条数），行内展示时间段、标题、地点、来源，按开始时间排序；列表模式保留原表格与搜索。周视图按 zh-CN 周一起始（dayjs locale），范围经 `calendar.search` 的 `from/to` 服务端过滤。
+- **U-36 收口**：新增 `--ww-danger / --ww-danger-border / --ww-warn / --ww-warn-soft / --ww-accent-soft / --ww-overlay / --ww-border-strong` 令牌；迁移全部剩余写死色值（Sidebar 选中底、Editor 候选高亮与悬停、NotesView 拖放遮罩、NoteDetailView 侧栏边框/入链悬停/未解析提示、SettingsView 虚线框、global.css 中 wikilink/pm-codeblock/hr/录音条/工具失败边框/hljs-string 等）。快捷入口装饰色（is-green/blue 等）维持既有决定：保留实现，已有暗色覆盖。
+- 验证：typecheck、153 项单测、build、`check:ui`（10 视图×两主题，含内部注释断言）全部通过；R21 验收 2/2 PASS；日历议程用注入 ICS 交互验证（今天过滤/排序/地点、周边界、无重复、列表全量）+ 周视图截图目检。报告 `release/verification/remio-r/2026-10-17T03-35-54-844Z` 与 `release/verification/ui/2026-10-17T03-32-35-114Z`。
+
+### 维持未完成（非开发项）
+
+- macOS 实机验收（视觉人工核对、Swift/EventKit、系统快捷键、分享扩展激活）、新签名包、真实服务验证、GitHub CI 远程观察。
 
 ### 验证
 
