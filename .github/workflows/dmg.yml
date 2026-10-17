@@ -42,9 +42,9 @@ jobs:
           set -euo pipefail
           app=release/mac-arm64/WhyWork.app
           codesign --verify --deep --strict "$app"
-          lipo -verify_arch arm64 "$app/Contents/MacOS/WhyWork"
-          lipo -verify_arch arm64 "$app/Contents/Resources/WhyWorkCalendar"
-          lipo -verify_arch arm64 "$app/Contents/PlugIns/WhyWorkShare.appex/Contents/MacOS/WhyWorkShare"
+          lipo "$app/Contents/MacOS/WhyWork" -verify_arch arm64
+          lipo "$app/Contents/Resources/WhyWorkCalendar" -verify_arch arm64
+          lipo "$app/Contents/PlugIns/WhyWorkShare.appex/Contents/MacOS/WhyWorkShare" -verify_arch arm64
           "$app/Contents/MacOS/WhyWork" --smoke-test
           "$app/Contents/MacOS/WhyWork" --core-check
           for dmg in release/*.dmg; do hdiutil verify "$dmg"; done
